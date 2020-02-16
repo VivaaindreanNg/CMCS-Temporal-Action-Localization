@@ -1,3 +1,6 @@
+from skimage.measure import label
+from skimage.morphology import dilation
+
 import os
 import matlab
 import json
@@ -9,13 +12,11 @@ from PIL import Image
 from scipy.io import loadmat
 from collections import defaultdict
 from scipy.interpolate import interp1d
-from skimage import measure
-from skimage.morphology import dilation
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from scipy.signal import medfilt
 
-import pdb
+#import pdb
 
 ################ Config ##########################
 
@@ -92,86 +93,74 @@ matlab_eng = matlab.engine.start_matlab()
 
 ################ Class Name Mapping #####################
 
-thumos14_old_cls_names = {
-    7: 'BaseballPitch',
-    9: 'BasketballDunk',
-    12: 'Billiards',
-    21: 'CleanAndJerk',
-    22: 'CliffDiving',
-    23: 'CricketBowling',
-    24: 'CricketShot',
-    26: 'Diving',
-    31: 'FrisbeeCatch',
-    33: 'GolfSwing',
-    36: 'HammerThrow',
-    40: 'HighJump',
-    45: 'JavelinThrow',
-    51: 'LongJump',
-    68: 'PoleVault',
-    79: 'Shotput',
-    85: 'SoccerPenalty',
-    92: 'TennisSwing',
-    93: 'ThrowDiscus',
-    97: 'VolleyballSpiking',
+ucf_crime_old_cls_names = {
+    1: 'Abuse',
+    2: 'Arrest',
+    3: 'Arson',
+    4: 'Assault',
+    5: 'Burglary',
+    6: 'Explosion',
+    7: 'Fighting',
+    8: 'NormalEvents',
+    9: 'RoadAccidents',
+    10: 'Robbery',
+    11: 'Shooting',
+    12: 'Shoplifting',
+    13: 'Stealing',
+    14: 'Vandalism'
 }
 
-thumos14_old_cls_indices = {v: k for k, v in thumos14_old_cls_names.items()}
+ucf_crime_old_cls_indices = {v: k for k, v in ucf_crime_old_cls_names.items()}
 
-thumos14_new_cls_names = {
-    0: 'BaseballPitch',
-    1: 'BasketballDunk',
-    2: 'Billiards',
-    3: 'CleanAndJerk',
-    4: 'CliffDiving',
-    5: 'CricketBowling',
-    6: 'CricketShot',
-    7: 'Diving',
-    8: 'FrisbeeCatch',
-    9: 'GolfSwing',
-    10: 'HammerThrow',
-    11: 'HighJump',
-    12: 'JavelinThrow',
-    13: 'LongJump',
-    14: 'PoleVault',
-    15: 'Shotput',
-    16: 'SoccerPenalty',
-    17: 'TennisSwing',
-    18: 'ThrowDiscus',
-    19: 'VolleyballSpiking',
-    20: 'Background',
+ucf_crime_new_cls_names = {
+    0: 'Abuse',
+    1: 'Arrest',
+    2: 'Arson',
+    3: 'Assault',
+    4: 'Burglary',
+    5: 'Explosion',
+    6: 'Fighting',
+    7: 'NormalEvents',
+    8: 'RoadAccidents',
+    9: 'Robbery',
+    10: 'Shooting',
+    11: 'Shoplifting',
+    12: 'Stealing',
+    13: 'Vandalism',
+    14: 'Background',
 }
 
-thumos14_new_cls_indices = {v: k for k, v in thumos14_new_cls_names.items()}
+ucf_crime_new_cls_indices = {v: k for k, v in ucf_crime_new_cls_names.items()}
 
 old_cls_names = {
-    'thumos14': thumos14_old_cls_names,
-    'ActivityNet12': np.load('misc/old_cls_names_anet12.npy').item(),
-    'ActivityNet13': np.load('misc/old_cls_names_anet13.npy').item(),
+    'ucf_crime': ucf_crime_old_cls_names,
+    #'ActivityNet12': np.load('misc/old_cls_names_anet12.npy').item(),
+    #'ActivityNet13': np.load('misc/old_cls_names_anet13.npy').item(),
 }
 
 old_cls_indices = {
-    'thumos14': thumos14_old_cls_indices,
-    'ActivityNet12': np.load('misc/old_cls_indices_anet12.npy').item(),
-    'ActivityNet13': np.load('misc/old_cls_indices_anet13.npy').item(),
+    'ucf_crime': ucf_crime_old_cls_indices,
+    #'ActivityNet12': np.load('misc/old_cls_indices_anet12.npy').item(),
+    #'ActivityNet13': np.load('misc/old_cls_indices_anet13.npy').item(),
 }
 
 new_cls_names = {
-    'thumos14': thumos14_new_cls_names,
-    'ActivityNet12': np.load('misc/new_cls_names_anet12.npy').item(),
-    'ActivityNet13': np.load('misc/new_cls_names_anet13.npy').item(),
+    'ucf_crime': ucf_crime_new_cls_names,
+    #'ActivityNet12': np.load('misc/new_cls_names_anet12.npy').item(),
+    #'ActivityNet13': np.load('misc/new_cls_names_anet13.npy').item(),
 }
 
 new_cls_indices = {
-    'thumos14': thumos14_new_cls_indices,
-    'ActivityNet12': np.load('misc/new_cls_indices_anet12.npy').item(),
-    'ActivityNet13': np.load('misc/new_cls_indices_anet13.npy').item(),
+    'ucf_crime': ucf_crime_new_cls_indices,
+    #'ActivityNet12': np.load('misc/new_cls_indices_anet12.npy').item(),
+    #'ActivityNet13': np.load('misc/new_cls_indices_anet13.npy').item(),
 }
 
 ################ Load dataset #####################
 
 
 def load_meta(meta_file):
-    '''Load video metas from the mat file (Only for thumos14).'''
+    '''Load video metas from the mat file (Only for ucf_crime).'''
     meta_data = loadmat(meta_file)
     meta_mat_name = [i for i in meta_data.keys() if 'videos' in i][0]
     meta_data = meta_data[meta_mat_name][0]
@@ -179,13 +168,13 @@ def load_meta(meta_file):
 
 
 def load_annotation_file(anno_file):
-    '''Load action instaces from a single file (Only for thumos14).'''
+    '''Load action instaces from a single file (Only for ucf_crime).'''
     anno_data = pd.read_csv(anno_file, header=None, delimiter=' ')
     anno_data = np.array(anno_data)
     return anno_data
 
 
-def __get_thumos14_meta(meta_file, anno_dir):
+def __get_ucf_crime_meta(meta_file, anno_dir):
 
     meta_data = load_meta(meta_file)
 
@@ -198,7 +187,7 @@ def __get_thumos14_meta(meta_file, anno_dir):
     for anno_file in anno_files:
 
         action_label = anno_file.split('_')[0]
-        action_label = new_cls_indices['thumos14'][action_label]
+        action_label = new_cls_indices['ucf_crime'][action_label]
 
         anno_file = os.path.join(anno_dir, anno_file)
         anno_data = load_annotation_file(anno_file)
@@ -274,7 +263,7 @@ def __get_anet_meta(anno_json_file, dataset_name, subset):
 
         dataset_dict[video_name] = {
             'duration': v['duration'],
-            'frame_rate': 25,  # ActivityNet should be formatted to 25 fps first
+            'frame_rate': 30,  # UCF-Crime should be formatted to 30 fps first
             'labels': [],
             'annotations': {},
         }
@@ -360,7 +349,7 @@ def __load_features(
 
         if rgb_feature_dir:
 
-            if dataset_name == 'thumos14':
+            if dataset_name == 'ucf_crime':
                 rgb_feature_file = os.path.join(rgb_feature_dir, k + '-rgb.npz')
             else:
                 rgb_feature_file = os.path.join(rgb_feature_dir,
@@ -374,7 +363,7 @@ def __load_features(
 
         if flow_feature_dir:
 
-            if dataset_name == 'thumos14':
+            if dataset_name == 'ucf_crime':
                 flow_feature_file = os.path.join(flow_feature_dir,
                                                  k + '-flow.npz')
             else:
@@ -409,7 +398,7 @@ def __load_background(
 
     for bg_mask_file in bg_mask_files:
 
-        if dataset_name == 'thumos14':
+        if dataset_name == 'ucf_crime':
             video_name = bg_mask_file[:-4]
         else:
             video_name = bg_mask_file[2:-4]
@@ -442,7 +431,7 @@ def __load_background(
             dataset_dict[new_key]['rgb_feature'] = bg_rgb
 
             frame_cnt = bg_rgb.shape[
-                1]  # Psuedo frame count of a virtual bg video
+                1]  # Pseudo frame count of a virtual bg video
 
         if type(dataset_dict[video_name]['flow_feature']) != int:
 
@@ -452,15 +441,15 @@ def __load_background(
             dataset_dict[new_key]['flow_feature'] = bg_flow
 
             frame_cnt = bg_flow.shape[
-                1]  # Psuedo frame count of a virtual bg video
+                1]  # Pseudo frame count of a virtual bg video
 
         dataset_dict[new_key]['annotations'] = {action_class_num: []}
         dataset_dict[new_key]['labels'] = [action_class_num]  # background class
 
         fps = dataset_dict[video_name]['frame_rate']
         dataset_dict[new_key]['frame_rate'] = fps
-        dataset_dict[new_key]['frame_cnt'] = frame_cnt  # Psuedo
-        dataset_dict[new_key]['duration'] = frame_cnt / fps  # Psuedo
+        dataset_dict[new_key]['frame_cnt'] = frame_cnt  # Pseudo
+        dataset_dict[new_key]['duration'] = frame_cnt / fps  # Pseudo
 
     return dataset_dict
 
@@ -477,9 +466,9 @@ def get_dataset(dataset_name,
                 temporal_aug=False,
                 load_background=False):
 
-    assert (dataset_name in ['thumos14', 'ActivityNet12', 'ActivityNet13'])
+    assert (dataset_name in ['ucf_crime', 'ActivityNet12', 'ActivityNet13'])
 
-    if dataset_name == 'thumos14':
+    if dataset_name == 'ucf_crime':
         if load_background:
             assert (subset in ['val'])
         else:
@@ -490,8 +479,8 @@ def get_dataset(dataset_name,
     assert (modality in ['both', 'rgb', 'flow', None])
     assert (feature_type in ['i3d', 'untri'])
 
-    if dataset_name == 'thumos14':
-        dataset_dict = __get_thumos14_meta(
+    if dataset_name == 'ucf_crime':
+        dataset_dict = __get_ucf_crime_meta(
             meta_file=file_paths[subset]['meta_file'],
             anno_dir=file_paths[subset]['anno_dir'])
     else:
@@ -678,7 +667,7 @@ def detections_to_mask(length, detections):
 def mask_to_detections(mask, metric, weight_inner, weight_outter):
 
     out_detections = []
-    detection_map = measure.label(mask, background=0)
+    detection_map = label(mask, background=0)
     detection_num = detection_map.max()
 
     for detection_id in range(1, detection_num + 1):
@@ -742,12 +731,12 @@ def detect_with_thresholding(metric,
 ################ Output Detection To Files ################
 
 
-def output_detections_thumos14(out_detections, out_file_name):
+def output_detections_ucf_crime(out_detections, out_file_name):
 
     for entry in out_detections:
         class_id = entry[3]
-        class_name = new_cls_names['thumos14'][class_id]
-        old_class_id = int(old_cls_indices['thumos14'][class_name])
+        class_name = new_cls_names['ucf_crime'][class_id]
+        old_class_id = int(old_cls_indices['ucf_crime'][class_name])
         entry[3] = old_class_id
 
     out_file = open(out_file_name, 'w')
@@ -997,7 +986,7 @@ def visualize_video_with_scores_barcodes(images_dir,
     subprocess.call([
         'ffmpeg', '-framerate',
         str(fps), '-i',
-        os.path.join(temp_dir, '%06d.png'), '-pix_fmt', 'yuv420p', out_file
+        os.path.join(temp_dir, '%07d.png'), '-pix_fmt', 'yuv420p', out_file
     ])
 
     os.system('rm -r {}'.format(temp_dir))
