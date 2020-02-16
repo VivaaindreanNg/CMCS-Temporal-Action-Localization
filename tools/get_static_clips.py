@@ -169,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--out_dir', type=str,
                         help='Output directory for static background clips')
     parser.add_argument('--percentile_thrh', type=int, default=30,
-                        help='Selection ratio for Hard Negative mining')  # Selection ratio for HN mining: 25% 
+                        help='Selection ratio for Hard Negative mining')  # Selection ratio for HN mining: 30% 
     args = parser.parse_args()
     
     
