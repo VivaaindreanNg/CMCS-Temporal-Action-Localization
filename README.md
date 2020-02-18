@@ -11,7 +11,7 @@ Code for 'Completeness Modeling and Context Separation for Weakly Supervised Tem
 
 ## Prerequisites
 * Install dependencies: `pip3 install -r requirements.txt`.
-* Alternatively, setup the required environment based on tal_env.py. (Change the value of 'name' and 'prefix' to suit your needs)
+* Alternatively, setup the required environment based on [tal_env.py](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/blob/master/tal_env.yml). (Change the value of 'name' and 'prefix' to suit your needs)
 * [Install Matlab API for Python](https://ww2.mathworks.cn/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) (matlab.engine).
 * Prepare UCF-Crime datasets.
 
