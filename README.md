@@ -5,38 +5,26 @@ Code for 'Completeness Modeling and Context Separation for Weakly Supervised Tem
 [Paper](http://www.vie.group/media/pdf/1273.pdf) and [Supplementary](http://www.vie.group/media/pdf/1273-supp.zip).
 
 ## Recommended Environment
-* Python 3.5
-* Cuda 9.0
+* Python 3.5 and above
+* Cuda 10.0
 * PyTorch 0.4
 
 ## Prerequisites
 * Install dependencies: `pip3 install -r requirements.txt`.
+* Alternatively, setup the required environment based on tal_env.py. (Change the value of 'name' and 'prefix' to suit your needs)
 * [Install Matlab API for Python](https://ww2.mathworks.cn/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) (matlab.engine).
-* Prepare THUMOS14 and ActivityNet datasets.
+* Prepare UCF-Crime datasets.
 
 ### Feature Extraction
-We employ UntrimmedNet or I3D features in the paper. 
-
-**We recommend re-extracting the features yourself using these two repos:**
-* [UNT Features](https://github.com/wanglimin/UntrimmedNet)
-* [I3D Features](https://github.com/Finspire13/pytorch-i3d-feature-extraction)
-
-Or use the features pre-extracted by us (Warning: Not easy to download):
-1. Download the features:
-* [THUMOS14 Features](https://pan.baidu.com/s/1YT1KhKND5G_msZZ_zkWv9g)
-* ~~[ActivityNet Features](https://pan.baidu.com/s/1KJxNE-_We-9AcBs0N6xTXA) (Input videos are 25fps)~~
-2. Join the zip files by `zip --fix {} --out {}` and unzip the files.
-3. Put the extracted folder into the parent folder of this repo. (Or change the paths in the config file.)
+We employ I3D features in the paper. 
+[Head over to here for more info](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/pytorch-i3d-feature-extraction)
 
 Other features can also be used.
 
 ### Generate Static Clip Masks:
 
 Static clip masks are used for hard negative mining. They are included in the download features.
-If you want to generate the masks by yourself, please refer to `tools/get_flow_intensity_anet.py`.
-
-### Check ActivityNet Videos
-URL links of some videos in this dataset are no longer valid. Check the availability and generate this file: [anet_missing_videos.npy](https://github.com/Finspire13/Weakly-Action-Detection/blob/Release-CVPR19/misc/anet_missing_videos.npy).
+If you want to generate the masks by yourself, please refer to `tools/get_static_clips.py`.
 
 ## Run
 
