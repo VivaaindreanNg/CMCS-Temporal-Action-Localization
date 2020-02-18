@@ -1,7 +1,7 @@
 {
-    "experiment_naming":"thumos-I3D",
+    "experiment_naming":"ucf_crime-I3D",
 
-    "dataset_name":"thumos14",
+    "dataset_name": "ucf_crime",
     
     "feature_type":"i3d",
     "feature_oversample":true,
@@ -11,7 +11,7 @@
     "diversity_reg":true,
     "diversity_weight":0.2,
 
-    "train_run_num":3,
+    "train_run_num":1,
 
     "training_max_len":null,
     "feature_dim":1024,
@@ -21,9 +21,9 @@
     "learning_rate_decay":false,
     "weight_decay":1e-3,
     
-    "max_step_num":15005,
+    "max_step_num":20005,
     "check_points":[
-        15000
+        20000
     ],
     "log_freq":500,
     
@@ -74,10 +74,11 @@
 
     "action_class_num":{
         "thumos14":20,
+        "ucf_crime": 14,
         "ActivityNet":null
     },
     "base_sample_rate":{
-        "thumos14":{        
+        "ucf_crime":{        
             "i3d":4,
             "untri":5
         },
@@ -92,12 +93,12 @@
         "untri":null
     },
     "file_paths":{
-        "thumos14":{
+        "ucf_crime":{
             "val":{
                 "meta_file":"./labels/thumos14-val-meta.mat",
                 "anno_dir":"./labels/thumos14-val-annotations",
                 "frames_dir":null,
-                "bg_mask_dir":"../THUMOS14_FEATURES/FLOW-INTENSITY/val",
+                "bg_mask_dir":"../static_clips",
                 "feature_dir":{
                     "untri-resize":{
                         "rgb":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-val-rgb-resize-step5",
@@ -108,12 +109,12 @@
                         "flow":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-val-flow-oversample-step5"
                     },
                     "i3d-resize":{
-                        "rgb":"../THUMOS14_FEATURES/I3D-4/thumos-val-rgb-resize",
-                        "flow":"../THUMOS14_FEATURES/I3D-4/thumos-val-flow-resize"
+                        "rgb":"../I3D-Train-Test/val-rgb-resize",
+                        "flow":"../I3D-Train-Test/val-flow-resize"
                     },
                     "i3d-oversample":{
-                        "rgb":"../THUMOS14_FEATURES/I3D-4/thumos-val-rgb-oversample",
-                        "flow":"../THUMOS14_FEATURES/I3D-4/thumos-val-flow-oversample"
+                        "rgb":"../../I3D-Train-Test/val-rgb-oversample",
+                        "flow":"../../I3D-Train-Test/val-flow-oversample"
                     }
                 }
             },
@@ -132,12 +133,12 @@
                         "flow":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-test-flow-oversample-step5"
                     },
                     "i3d-resize":{
-                        "rgb":"../THUMOS14_FEATURES/I3D-4/thumos-test-rgb-resize",
-                        "flow":"../THUMOS14_FEATURES/I3D-4/thumos-test-flow-resize"
+                        "rgb":"../../I3D-Train-Test/test-rgb-resize",
+                        "flow":"../../I3D-Train-Test/test-flow-resize"
                     },
                     "i3d-oversample":{
-                        "rgb":"../THUMOS14_FEATURES/I3D-4/thumos-test-rgb-oversample",
-                        "flow":"../THUMOS14_FEATURES/I3D-4/thumos-test-flow-oversample"
+                        "rgb":"../../I3D-Train-Test/test-rgb-oversample",
+                        "flow":"../../I3D-Train-Test/test-flow-oversample"
                     }
                 }
             }
