@@ -101,7 +101,7 @@ ucf_crime_old_cls_names = {
     5: 'Burglary',
     6: 'Explosion',
     7: 'Fighting',
-    8: 'NormalEvents',
+    8: 'Normal',
     9: 'RoadAccidents',
     10: 'Robbery',
     11: 'Shooting',
@@ -120,7 +120,7 @@ ucf_crime_new_cls_names = {
     4: 'Burglary',
     5: 'Explosion',
     6: 'Fighting',
-    7: 'NormalEvents',
+    7: 'Normal',
     8: 'RoadAccidents',
     9: 'Robbery',
     10: 'Shooting',
@@ -166,7 +166,9 @@ def load_meta(meta_file):
     meta_data = meta_data[meta_mat_name][0]
     return meta_data
 
-
+#TODO: For ucf crime, just load the Anomaly_train.txt 
+#TODO: For ucf crime, just load based on video's name
+#TODO: Exclude meta data
 def load_annotation_file(anno_file):
     '''Load action instaces from a single file (Only for ucf_crime).'''
     anno_data = pd.read_csv(anno_file, header=None, delimiter=' ')
@@ -176,18 +178,61 @@ def load_annotation_file(anno_file):
 
 def __get_ucf_crime_meta(meta_file, anno_dir):
 
-    meta_data = load_meta(meta_file)
+    #meta_data = load_meta(meta_file)
 
     dataset_dict = {}
 
-    anno_files = [i for i in os.listdir(anno_dir) if 'Ambiguous' not in i]
-    anno_files.remove('detclasslist.txt')
-    anno_files.sort()
+    #anno_files = [i for i in os.listdir(anno_dir) if 'Ambiguous' not in i]
+    #anno_files.remove('detclasslist.txt')
+    #anno_files.sort()
+    
 
+    #TODO: anno_dir points to training(...-val-annotations) & testing(...-test-annotations)
+    anno_file = os.listdir(anno_dir)[1]
+    anno_file_pth = os.path.join(anno_dir, anno_file)
+    anno_data = load_annotation_file(anno_file_pth)
+    
+    for entry in anno_data:
+        video_name = entry[0].split('.')[0]
+        #action_label points to Abuse, Arrest, Arson....
+        action_label = entry[2] 
+        #points to indices of Abuse, Arrest,...
+        action_label = new_cls_indices['ucf_crime'][action_label]  
+        # Frame number to seconds
+        s1 = np.round(entry[4]/30, 1)
+        e1 = np.round(entry[6]/30, 1)
+        s2 = np.round(entry[8]/30, 1)
+        e2 = np.round(entry[10]/30, 1)
+        
+        if video_name not in dataset_dict.keys():
+            dataset_dict[video_name] = {
+                    #'duration': duration,
+                    'frame_rate': 30,
+                    'labels': [],
+                    'annotations': {},
+            }
+            
+        if action_label not in dataset_dict[video_name]['labels']:
+            dataset_dict[video_name]['labels'].append(action_label)
+            dataset_dict[video_name]['annotations'][action_label] = []
+        # Track temporal annotations (only for test set)    
+        if anno_file.split('_')[1].startswith('test'):
+            if s1 == -.0:
+                dataset_dict[video_name]['annotations'][action_label].append([])
+            elif s2 == -.0 and s1 != -.0:
+                dataset_dict[video_name]['annotations'][action_label].append([s1, e1])
+            else:
+                dataset_dict[video_name]['annotations'][action_label].append([s1, e1]) 
+                dataset_dict[video_name]['annotations'][action_label].append([s2, e2])
+    return dataset_dict
+            
+            
+    
+    '''
     for anno_file in anno_files:
-
-        action_label = anno_file.split('_')[0]
-        action_label = new_cls_indices['ucf_crime'][action_label]
+        #TODO: Exclude 'duration' for meta files??
+        action_label = anno_file.split('_')[0]                       #Abuse, Arrest
+        action_label = new_cls_indices['ucf_crime'][action_label]    #0, 1
 
         anno_file = os.path.join(anno_dir, anno_file)
         anno_data = load_annotation_file(anno_file)
@@ -200,16 +245,16 @@ def __get_ucf_crime_meta(meta_file, anno_dir):
             ### Initializatiton ###
             if video_name not in dataset_dict.keys():
 
-                video_meta = [i for i in meta_data if i[0][0] == video_name][0]
+                #video_meta = [i for i in meta_data if i[0][0] == video_name][0]
 
-                duration = video_meta[meta_data.dtype.names.index(
-                    'video_duration_seconds')][0, 0]
-                frame_rate = video_meta[meta_data.dtype.names.index(
-                    'frame_rate_FPS')][0, 0]
+                #duration = video_meta[meta_data.dtype.names.index(
+                    #'video_duration_seconds')][0, 0]
+                #frame_rate = video_meta[meta_data.dtype.names.index(
+                    #'frame_rate_FPS')][0, 0]
 
                 dataset_dict[video_name] = {
-                    'duration': duration,
-                    'frame_rate': frame_rate,
+                    #'duration': duration,
+                    'frame_rate': 30,
                     'labels': [],
                     'annotations': {},
                 }
@@ -223,8 +268,9 @@ def __get_ucf_crime_meta(meta_file, anno_dir):
                 [start, end])
 
     return dataset_dict
+    '''
 
-
+'''
 def __get_anet_meta(anno_json_file, dataset_name, subset):
 
     data = json.load(open(anno_json_file, 'r'))
@@ -281,6 +327,7 @@ def __get_anet_meta(anno_json_file, dataset_name, subset):
                 entry['segment'])
 
     return dataset_dict
+'''
 
 
 def __load_features(
@@ -466,7 +513,7 @@ def get_dataset(dataset_name,
                 temporal_aug=False,
                 load_background=False):
 
-    assert (dataset_name in ['ucf_crime', 'ActivityNet12', 'ActivityNet13'])
+    assert (dataset_name in ['ucf_crime', 'thumos', 'ActivityNet13'])
 
     if dataset_name == 'ucf_crime':
         if load_background:
@@ -479,13 +526,15 @@ def get_dataset(dataset_name,
     assert (modality in ['both', 'rgb', 'flow', None])
     assert (feature_type in ['i3d', 'untri'])
 
-    if dataset_name == 'ucf_crime':
-        dataset_dict = __get_ucf_crime_meta(
-            meta_file=file_paths[subset]['meta_file'],
-            anno_dir=file_paths[subset]['anno_dir'])
+    #TODO:
+    dataset_dict = __get_ucf_crime_meta(
+        meta_file=file_paths[subset]['meta_file'],
+        anno_dir=file_paths[subset]['anno_dir'])
+    '''
     else:
         dataset_dict = __get_anet_meta(file_paths[subset]['anno_json_file'],
                                        dataset_name, subset)
+    '''
 
     _temp_f_type = (feature_type +
                     '-oversample' if feature_oversample else feature_type +
@@ -525,11 +574,12 @@ def get_single_label_dict(dataset_dict):
 
     for k, v in dataset_dict.items():
         for label in v['labels']:
-
+            
+            #TODO: Can modify below to simply point to video name since vidname contains labels
             new_key = '{}-{}'.format(k, label)
 
             new_dict[new_key] = dict(v)
-
+            #label_single will contain the class of activities: Abuse, Arrest....
             new_dict[new_key]['label_single'] = label
             new_dict[new_key]['annotations'] = v['annotations'][label]
             new_dict[new_key]['weight'] = (1 / len(v['labels']))
@@ -747,7 +797,7 @@ def output_detections_ucf_crime(out_detections, out_file_name):
 
     out_file.close()
 
-
+'''
 def output_detections_anet(out_detections, out_file_name, dataset_name,
                            feature_type):
 
@@ -789,7 +839,7 @@ def output_detections_anet(out_detections, out_file_name, dataset_name,
 
     with open(out_file_name, 'w') as f:
         f.write(json.dumps(output_dict))
-
+'''
 
 ################ Visualization #####################
 
