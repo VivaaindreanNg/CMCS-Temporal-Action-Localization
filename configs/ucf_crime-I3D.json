@@ -96,9 +96,9 @@
         "ucf_crime":{
             "val":{
                 "meta_file":"./labels/thumos14-val-meta.mat",
-                "anno_dir":"./labels/thumos14-val-annotations",
+                "anno_dir":"./labels/ucf_crime-val-annotations",
                 "frames_dir":null,
-                "bg_mask_dir":"../static_clips",
+                "bg_mask_dir":"../../static_clips",
                 "feature_dir":{
                     "untri-resize":{
                         "rgb":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-val-rgb-resize-step5",
@@ -120,7 +120,7 @@
             },
             "test":{
                 "meta_file":"./labels/thumos14-test-meta.mat",
-                "anno_dir":"./labels/thumos14-test-annotations",
+                "anno_dir":"./labels/ucf_crime-test-annotations",
                 "frames_dir":null,
                 "bg_mask_dir":null,
                 "feature_dir":{
