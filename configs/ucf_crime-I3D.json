@@ -4,7 +4,7 @@
     "dataset_name": "ucf_crime",
     
     "feature_type":"i3d",
-    "feature_oversample":true,
+    "feature_oversample":false,
     "sample_rate":16,
 
     "with_bg":true,
@@ -68,10 +68,6 @@
     },
 
 
-
-
-
-
     "action_class_num":{
         "thumos14":20,
         "ucf_crime": 14,
@@ -95,22 +91,13 @@
     "file_paths":{
         "ucf_crime":{
             "val":{
-                "meta_file":"./labels/thumos14-val-meta.mat",
                 "anno_dir":"./labels/ucf_crime-val-annotations",
                 "frames_dir":null,
                 "bg_mask_dir":"../../static_clips",
                 "feature_dir":{
-                    "untri-resize":{
-                        "rgb":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-val-rgb-resize-step5",
-                        "flow":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-val-flow-resize-step5"
-                    },
-                    "untri-oversample":{
-                        "rgb":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-val-rgb-oversample-step5",
-                        "flow":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-val-flow-oversample-step5"
-                    },
                     "i3d-resize":{
-                        "rgb":"../I3D-Train-Test/val-rgb-resize",
-                        "flow":"../I3D-Train-Test/val-flow-resize"
+                        "rgb":"../../I3D-Train-Test/val-rgb-resize",
+                        "flow":"../../I3D-Train-Test/val-flow-resize"
                     },
                     "i3d-oversample":{
                         "rgb":"../../I3D-Train-Test/val-rgb-oversample",
@@ -119,19 +106,10 @@
                 }
             },
             "test":{
-                "meta_file":"./labels/thumos14-test-meta.mat",
                 "anno_dir":"./labels/ucf_crime-test-annotations",
                 "frames_dir":null,
                 "bg_mask_dir":null,
                 "feature_dir":{
-                    "untri-resize":{
-                        "rgb":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-test-rgb-resize-step5",
-                        "flow":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-test-flow-resize-step5"
-                    },
-                    "untri-oversample":{
-                        "rgb":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-test-rgb-oversample-step5",
-                        "flow":"../THUMOS14_FEATURES/UNTRI-5/untri-thumos14-test-flow-oversample-step5"
-                    },
                     "i3d-resize":{
                         "rgb":"../../I3D-Train-Test/test-rgb-resize",
                         "flow":"../../I3D-Train-Test/test-flow-resize"
