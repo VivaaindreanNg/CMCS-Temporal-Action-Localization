@@ -16,15 +16,18 @@ Code for 'Completeness Modeling and Context Separation for Weakly Supervised Tem
 * Prepare UCF-Crime datasets.
 
 ### Feature Extraction
-We employ I3D features in the paper. 
-[Head over to here for more info](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/pytorch-i3d-feature-extraction)
 
-Other features can also be used.
+We employ I3D features in the paper. 
+[Head over to here for more info.](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/pytorch-i3d-feature-extraction) Other features can also be used.
 
 ### Generate Static Clip Masks:
 
 Static clip masks are used for hard negative mining. They are included in the download features.
 If you want to generate the masks by yourself, please refer to `tools/get_static_clips.py`.
+
+### Data preparation for Training & Testing
+
+Run the `tools/train_test_split.py` to segregate extracted features into val(training subdirectories) & test(testing subdirectories), similar as the one configured in `configs/ucf_crime-I3D.json`. 
 
 ## Run
 
@@ -47,16 +50,11 @@ For THUMOS14, predictions are saved in `output/predictions` and final performanc
 For ActivityNet, predictions are saved in `output/predictions` and final performances can be obtained via the dataset evaluation API.
 
 #### Settings
-Our method is evaluated on THUMOS14 and ActivityNet with I3D or UNT features. Experiment settings and their auguments are listed as following. 
+This experiment is evaluated on UCF-Crime with I3D features. Experiment settings and their auguments are listed as following. 
 
-|   |           config-file          | train-subset-name | test-subset-name |
-|---|:------------------------------:|:-----------------:|:----------------:|
-| 1 |     configs/thumos-UNT.json    |        val        |       test       |
-| 2 |     configs/thumos-I3D.json    |        val        |       test       |
-| 3 |  configs/anet12-local-UNT.json |       train       |        val       |
-| 4 |  configs/anet12-local-I3D.json |       train       |        val       |
-| 5 |  configs/anet13-local-I3D.json |       train       |        val       |
-| 6 | configs/anet13-server-I3D.json |       train       |       test       |
+|           config-file          | train-subset-name | test-subset-name |
+|:------------------------------:|:-----------------:|:----------------:|
+|     configs/ucf_crime-I3D.json |        val        |       test       |
 
 
 ## Trained Models
