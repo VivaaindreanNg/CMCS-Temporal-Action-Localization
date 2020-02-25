@@ -21,9 +21,9 @@
     "learning_rate_decay":false,
     "weight_decay":1e-3,
     
-    "max_step_num":20005,
+    "max_step_num":15005,
     "check_points":[
-        20000
+        15000
     ],
     "log_freq":500,
     
