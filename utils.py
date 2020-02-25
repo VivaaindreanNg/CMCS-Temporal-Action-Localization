@@ -134,41 +134,22 @@ ucf_crime_new_cls_indices = {v: k for k, v in ucf_crime_new_cls_names.items()}
 
 old_cls_names = {
     'ucf_crime': ucf_crime_old_cls_names,
-    #'ActivityNet12': np.load('misc/old_cls_names_anet12.npy').item(),
-    #'ActivityNet13': np.load('misc/old_cls_names_anet13.npy').item(),
 }
 
 old_cls_indices = {
     'ucf_crime': ucf_crime_old_cls_indices,
-    #'ActivityNet12': np.load('misc/old_cls_indices_anet12.npy').item(),
-    #'ActivityNet13': np.load('misc/old_cls_indices_anet13.npy').item(),
 }
 
 new_cls_names = {
     'ucf_crime': ucf_crime_new_cls_names,
-    #'ActivityNet12': np.load('misc/new_cls_names_anet12.npy').item(),
-    #'ActivityNet13': np.load('misc/new_cls_names_anet13.npy').item(),
 }
 
 new_cls_indices = {
     'ucf_crime': ucf_crime_new_cls_indices,
-    #'ActivityNet12': np.load('misc/new_cls_indices_anet12.npy').item(),
-    #'ActivityNet13': np.load('misc/new_cls_indices_anet13.npy').item(),
 }
 
 ################ Load dataset #####################
 
-
-def load_meta(meta_file):
-    '''Load video metas from the mat file (Only for ucf_crime).'''
-    meta_data = loadmat(meta_file)
-    meta_mat_name = [i for i in meta_data.keys() if 'videos' in i][0]
-    meta_data = meta_data[meta_mat_name][0]
-    return meta_data
-
-#TODO: For ucf crime, just load the Anomaly_train.txt 
-#TODO: For ucf crime, just load based on video's name
-#TODO: Exclude meta data
 def load_annotation_file(anno_file):
     '''Load action instaces from a single file (Only for ucf_crime).'''
     anno_data = pd.read_csv(anno_file, header=None, delimiter=' ')
@@ -176,19 +157,9 @@ def load_annotation_file(anno_file):
     return anno_data
 
 
-def __get_ucf_crime_meta(meta_file, anno_dir):
-
-    #meta_data = load_meta(meta_file)
-
+def __get_ucf_crime_anno(anno_dir):
     dataset_dict = {}
-
-    #anno_files = [i for i in os.listdir(anno_dir) if 'Ambiguous' not in i]
-    #anno_files.remove('detclasslist.txt')
-    #anno_files.sort()
-    
-
-    #TODO: anno_dir points to training(...-val-annotations) & testing(...-test-annotations)
-    anno_file = os.listdir(anno_dir)[1]
+    anno_file = os.listdir(anno_dir)[0]
     anno_file_pth = os.path.join(anno_dir, anno_file)
     anno_data = load_annotation_file(anno_file_pth)
     
@@ -198,11 +169,6 @@ def __get_ucf_crime_meta(meta_file, anno_dir):
         action_label = entry[2] 
         #points to indices of Abuse, Arrest,...
         action_label = new_cls_indices['ucf_crime'][action_label]  
-        # Frame number to seconds
-        s1 = np.round(entry[4]/30, 1)
-        e1 = np.round(entry[6]/30, 1)
-        s2 = np.round(entry[8]/30, 1)
-        e2 = np.round(entry[10]/30, 1)
         
         if video_name not in dataset_dict.keys():
             dataset_dict[video_name] = {
@@ -217,118 +183,22 @@ def __get_ucf_crime_meta(meta_file, anno_dir):
             dataset_dict[video_name]['annotations'][action_label] = []
         # Track temporal annotations (only for test set)    
         if anno_file.split('_')[1].startswith('test'):
-            if s1 == -.0:
-                dataset_dict[video_name]['annotations'][action_label].append([])
-            elif s2 == -.0 and s1 != -.0:
-                dataset_dict[video_name]['annotations'][action_label].append([s1, e1])
+            # Frame number to seconds
+            start1 = np.round(entry[4]/30, 1)
+            end1 = np.round(entry[6]/30, 1)
+            start2 = np.round(entry[8]/30, 1)
+            end2 = np.round(entry[10]/30, 1)
+        
+            if start1 == -.0:
+                continue
+                #dataset_dict[video_name]['annotations'][action_label].append([])
+            elif start2 == -.0 and start1 != -.0:
+                dataset_dict[video_name]['annotations'][action_label].append([start1, end1])
             else:
-                dataset_dict[video_name]['annotations'][action_label].append([s1, e1]) 
-                dataset_dict[video_name]['annotations'][action_label].append([s2, e2])
-    return dataset_dict
-            
-            
+                dataset_dict[video_name]['annotations'][action_label].append([start1, end1]) 
+                dataset_dict[video_name]['annotations'][action_label].append([start2, end2])
+    return dataset_dict      
     
-    '''
-    for anno_file in anno_files:
-        #TODO: Exclude 'duration' for meta files??
-        action_label = anno_file.split('_')[0]                       #Abuse, Arrest
-        action_label = new_cls_indices['ucf_crime'][action_label]    #0, 1
-
-        anno_file = os.path.join(anno_dir, anno_file)
-        anno_data = load_annotation_file(anno_file)
-
-        for entry in anno_data:
-            video_name = entry[0]
-            start = entry[2]
-            end = entry[3]
-
-            ### Initializatiton ###
-            if video_name not in dataset_dict.keys():
-
-                #video_meta = [i for i in meta_data if i[0][0] == video_name][0]
-
-                #duration = video_meta[meta_data.dtype.names.index(
-                    #'video_duration_seconds')][0, 0]
-                #frame_rate = video_meta[meta_data.dtype.names.index(
-                    #'frame_rate_FPS')][0, 0]
-
-                dataset_dict[video_name] = {
-                    #'duration': duration,
-                    'frame_rate': 30,
-                    'labels': [],
-                    'annotations': {},
-                }
-
-            if action_label not in dataset_dict[video_name]['labels']:
-                dataset_dict[video_name]['labels'].append(action_label)
-                dataset_dict[video_name]['annotations'][action_label] = []
-            ###
-
-            dataset_dict[video_name]['annotations'][action_label].append(
-                [start, end])
-
-    return dataset_dict
-    '''
-
-'''
-def __get_anet_meta(anno_json_file, dataset_name, subset):
-
-    data = json.load(open(anno_json_file, 'r'))
-    taxonomy_data = data['taxonomy']
-    database_data = data['database']
-    missing_videos = np.load('misc/anet_missing_videos.npy')
-
-    if subset == 'train':
-        subset_data = {
-            k: v for k, v in database_data.items() if v['subset'] == 'training'
-        }
-    elif subset == 'val':
-        subset_data = {
-            k: v
-            for k, v in database_data.items()
-            if v['subset'] == 'validation'
-        }
-    elif subset == 'train_and_val':
-        subset_data = {
-            k: v
-            for k, v in database_data.items()
-            if v['subset'] in ['training', 'validation']
-        }
-    elif subset == 'test':
-        subset_data = {
-            k: v for k, v in database_data.items() if v['subset'] == 'testing'
-        }
-
-    dataset_dict = {}
-
-    for video_name, v in subset_data.items():
-
-        if video_name in missing_videos:
-            print('Missing video: {}'.format(video_name))
-            continue
-
-        dataset_dict[video_name] = {
-            'duration': v['duration'],
-            'frame_rate': 30,  # UCF-Crime should be formatted to 30 fps first
-            'labels': [],
-            'annotations': {},
-        }
-
-        for entry in v['annotations']:
-
-            action_label = entry['label']
-            action_label = new_cls_indices[dataset_name][action_label]
-
-            if action_label not in dataset_dict[video_name]['labels']:
-                dataset_dict[video_name]['labels'].append(action_label)
-                dataset_dict[video_name]['annotations'][action_label] = []
-
-            dataset_dict[video_name]['annotations'][action_label].append(
-                entry['segment'])
-
-    return dataset_dict
-'''
-
 
 def __load_features(
         dataset_dict,  # dataset_dict will be modified
@@ -340,7 +210,7 @@ def __load_features(
         rgb_feature_dir,
         flow_feature_dir):
 
-    assert (feature_type in ['i3d', 'untri'])
+    assert (feature_type in ['i3d']) #i3d, untri
 
     assert (sample_rate % base_sample_rate == 0)
     f_sample_rate = int(sample_rate / base_sample_rate)
@@ -355,10 +225,7 @@ def __load_features(
 
         frame_cnt = feature_data['frame_cnt'].item()
 
-        if feature_type == 'untri':
-            feature = np.swapaxes(feature_data['feature'][:, :, :, 0, 0], 0, 1)
-        elif feature_type == 'i3d':
-            feature = feature_data['feature']
+        feature = feature_data['feature']
 
         # Feature: (B, T, F)
         # Example: (1, 249, 1024) or (10, 249, 1024) (Oversample)
@@ -513,28 +380,17 @@ def get_dataset(dataset_name,
                 temporal_aug=False,
                 load_background=False):
 
-    assert (dataset_name in ['ucf_crime', 'thumos', 'ActivityNet13'])
+    assert (dataset_name in ['ucf_crime']) #thumos14, ActivityNet...
 
-    if dataset_name == 'ucf_crime':
-        if load_background:
-            assert (subset in ['val'])
-        else:
-            assert (subset in ['val', 'test'])
+    if load_background:
+        assert (subset in ['val'])
     else:
-        assert (subset in ['train', 'val', 'train_and_val', 'test'])
+        assert (subset in ['val', 'test'])
 
     assert (modality in ['both', 'rgb', 'flow', None])
-    assert (feature_type in ['i3d', 'untri'])
+    assert (feature_type in ['i3d']) #i3d, untri
 
-    #TODO:
-    dataset_dict = __get_ucf_crime_meta(
-        meta_file=file_paths[subset]['meta_file'],
-        anno_dir=file_paths[subset]['anno_dir'])
-    '''
-    else:
-        dataset_dict = __get_anet_meta(file_paths[subset]['anno_json_file'],
-                                       dataset_name, subset)
-    '''
+    dataset_dict = __get_ucf_crime_anno(anno_dir=file_paths[subset]['anno_dir'])
 
     _temp_f_type = (feature_type +
                     '-oversample' if feature_oversample else feature_type +
@@ -575,7 +431,6 @@ def get_single_label_dict(dataset_dict):
     for k, v in dataset_dict.items():
         for label in v['labels']:
             
-            #TODO: Can modify below to simply point to video name since vidname contains labels
             new_key = '{}-{}'.format(k, label)
 
             new_dict[new_key] = dict(v)
@@ -631,21 +486,15 @@ def smooth(x):  # Two Dim nparray, On 1st dim
 def __get_frame_ticks(feature_type, frame_cnt, sample_rate, snippet_size=None):
     '''Get the frames of each feature snippet location.'''
 
-    assert (feature_type in ['i3d', 'untri'])
+    assert (feature_type in ['i3d']) #i3d, untri
+    assert (snippet_size is not None)
 
-    if feature_type == 'i3d':
-        assert (snippet_size is not None)
+    clipped_length = frame_cnt - snippet_size
+    clipped_length = (clipped_length // sample_rate) * sample_rate
+    # the start of the last chunk
 
-        clipped_length = frame_cnt - snippet_size
-        clipped_length = (clipped_length // sample_rate) * sample_rate
-        # the start of the last chunk
-
-        frame_ticks = np.arange(0, clipped_length + 1, sample_rate)
-        # From 0, the start of chunks, clipped_length included
-
-    elif feature_type == 'untri':
-        frame_ticks = np.arange(0, frame_cnt, sample_rate)
-        # From 0, image files are from 1
+    frame_ticks = np.arange(0, clipped_length + 1, sample_rate)
+    # From 0, the start of chunks, clipped_length included
 
     return frame_ticks
 
@@ -796,50 +645,6 @@ def output_detections_ucf_crime(out_detections, out_file_name):
             entry[0], entry[1], entry[2], int(entry[3]), entry[4]))
 
     out_file.close()
-
-'''
-def output_detections_anet(out_detections, out_file_name, dataset_name,
-                           feature_type):
-
-    assert (dataset_name in ['ActivityNet12', 'ActivityNet13'])
-    assert (feature_type in ['untri', 'i3d'])
-
-    for entry in out_detections:
-        class_id = entry[3]
-        class_name = new_cls_names[dataset_name][class_id]
-        entry[3] = class_name
-
-    output_dict = {}
-
-    if dataset_name == 'ActivityNet12':
-        output_dict['version'] = 'VERSION 1.2'
-    else:
-        output_dict['version'] = 'VERSION 1.3'
-
-    if feature_type == 'untri':
-        output_dict['external_data'] = {
-            'used': False,
-            'details': 'Untri feature'
-        }
-    else:
-        output_dict['external_data'] = {'used': True, 'details': 'I3D feature'}
-
-    output_dict['results'] = {}
-
-    for entry in out_detections:
-
-        if entry[0] not in output_dict['results']:
-            output_dict['results'][entry[0]] = []
-
-        output_dict['results'][entry[0]].append({
-            'label': entry[3],
-            'score': entry[4],
-            'segment': [entry[1], entry[2]],
-        })
-
-    with open(out_file_name, 'w') as f:
-        f.write(json.dumps(output_dict))
-'''
 
 ################ Visualization #####################
 
