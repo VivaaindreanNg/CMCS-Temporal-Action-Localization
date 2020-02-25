@@ -1,5 +1,4 @@
 import matlab.engine  # Must import matlab.engine first
-
 import os
 import torch
 import numpy as np
@@ -12,9 +11,9 @@ import matplotlib.pyplot as plt
 from logger import Logger
 from model import BackboneNet
 from dataset import SingleVideoDataset
-from utils import get_dataset, eval_thumos_recog, load_config_file
+from utils import get_dataset, load_config_file
 
-import pdb
+#import pdb
 
 device = torch.device('cuda')
 
@@ -27,7 +26,7 @@ def get_diversity_loss(scores):
 
     S1 = torch.stack(softmax_scores).permute(1, 3, 0, 2)
     S2 = torch.stack(softmax_scores).permute(1, 3, 2, 0)
-    S1_norm = S1.norm(p=2, dim=3, keepdim=True)  # + 1e-6 carefule here
+    S1_norm = S1.norm(p=2, dim=3, keepdim=True)  # + 1e-6 careful here
     S2_norm = S2.norm(p=2, dim=2, keepdim=True)  #
 
     R = torch.matmul(S1, S2) / (torch.matmul(S1_norm, S2_norm) + 1e-6)
@@ -65,6 +64,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+    
     parser.add_argument('--config-file', type=str)
     parser.add_argument('--train-subset-name', type=str)
     parser.add_argument('--test-subset-name', type=str)
@@ -79,9 +79,10 @@ if __name__ == '__main__':
     print(args.train_subset_name)
     print(args.test_subset_name)
     print(args.test_log)
-
+    
     all_params = load_config_file(args.config_file)
     locals().update(all_params)
+    
 
     def test(model, loader, modality):
 
@@ -99,7 +100,7 @@ if __name__ == '__main__':
             'sum': 0,
         }
 
-        criterion = nn.CrossEntropyLoss(reduction='elementwise_mean')
+        criterion = nn.CrossEntropyLoss(reduction='mean')
 
         with torch.no_grad():
 
@@ -111,21 +112,28 @@ if __name__ == '__main__':
                 label = data['label'].to(device)
                 weight = data['weight'].to(device).float()
 
-                if label.item() == action_class_num:
+                if label.item() == all_params['action_class_num']:
                     continue
                 else:
                     total_cnt += 1
 
                 if modality == 'both':
-                    rgb = data['rgb'].to(device).squeeze(0)
-                    flow = data['flow'].to(device).squeeze(0)
-                    model_input = torch.cat([rgb, flow], dim=2)
+                    if data['rgb'].shape[1] != 0 and data['flow'].shape[1] != 0:
+                        rgb = data['rgb'].to(device).squeeze(0)
+                        flow = data['flow'].to(device).squeeze(0)
+                        model_input = torch.cat([rgb, flow], dim=2)
                 elif modality == 'rgb':
-                    model_input = data['rgb'].to(device).squeeze(0)
+                    if data['rgb'].shape[1] != 0:
+                        model_input = data['rgb'].to(device).squeeze(0)
                 else:
-                    model_input = data['flow'].to(device).squeeze(0)
+                    if data['flow'].shape[1] != 0:
+                        model_input = data['flow'].to(device).squeeze(0)
 
-                model_input = model_input.transpose(2, 1)
+                if model_input.shape[-1] == all_params['feature_dim']:
+                    model_input = model_input.transpose(2, 1)
+                #Both
+                if modality == 'both' and model_input.shape[-1] == all_params['feature_dim']*2:
+                    model_input = model_input.transpose(2, 1)
                 _, _, out, scores, _ = model(model_input)
 
                 out = out.mean(0, keepdim=True)
@@ -133,18 +141,18 @@ if __name__ == '__main__':
                 loss_cls = criterion(out, label) * weight
                 total_loss['cls'] += loss_cls.item()
 
-                if diversity_reg:
+                if all_params['diversity_reg']:
 
                     loss_div = get_diversity_loss(scores) * weight
-                    loss_div = loss_div * diversity_weight
+                    loss_div = loss_div * all_params['diversity_weight']
 
                     loss_norm = get_norm_regularization(scores) * weight
-                    loss_norm = loss_norm * diversity_weight
+                    loss_norm = loss_norm * all_params['diversity_weight']
 
                     total_loss['div'] += loss_div.item()
                     total_loss['norm'] += loss_norm.item()
 
-                out = out[:, :action_class_num]  # Remove bg
+                out = out[:, :all_params['action_class_num']]  # Remove bg
                 pred = torch.argmax(out, dim=1)
                 correct += (pred.item() == label.item())
 
@@ -156,7 +164,7 @@ if __name__ == '__main__':
                 pred_score_dict[video_key] = out.cpu().numpy()
 
                 if video_key not in label_dict.keys():
-                    label_dict[video_key] = np.zeros((1, action_class_num))
+                    label_dict[video_key] = np.zeros((1, all_params['action_class_num']))
 
                 label_dict[video_key][0, label.item()] = 1
                 ###############
@@ -173,11 +181,7 @@ if __name__ == '__main__':
             pred_score_matrix.append(v)
             label_matrix.append(label_dict[k])
 
-        _, mean_ap = eval_thumos_recog(
-            np.concatenate(pred_score_matrix, axis=0),
-            np.concatenate(label_matrix, axis=0), action_class_num)
-
-        return accuracy, avg_loss, mean_ap
+        return accuracy, avg_loss
 
     def train(train_train_loader, train_test_loader, test_test_loader, modality,
               naming):
@@ -194,23 +198,23 @@ if __name__ == '__main__':
             os.makedirs(save_dir)
 
         if modality == 'both':
-            model = BackboneNet(in_features=feature_dim * 2,
-                                **model_params).to(device)
+            model = BackboneNet(in_features=all_params['feature_dim'] * 2,
+                                **all_params['model_params']).to(device)
         else:
-            model = BackboneNet(in_features=feature_dim,
-                                **model_params).to(device)
+            model = BackboneNet(in_features=all_params['feature_dim'],
+                                **all_params['model_params']).to(device)
 
         optimizer = optim.Adam(model.parameters(),
-                               lr=learning_rate,
-                               weight_decay=weight_decay)
+                               lr=all_params['learning_rate'],
+                               weight_decay=all_params['weight_decay'])
 
-        if learning_rate_decay:
+        if all_params['learning_rate_decay']:
             scheduler = optim.lr_scheduler.MultiStepLR(
-                optimizer, milestones=[max_step_num // 2], gamma=0.1)
+                optimizer, milestones=[all_params['max_step_num'] // 2], gamma=0.1)
 
         optimizer.zero_grad()
 
-        criterion = nn.CrossEntropyLoss(reduction='elementwise_mean')
+        criterion = nn.CrossEntropyLoss(reduction='mean')
 
         update_step_idx = 0
         single_video_idx = 0
@@ -221,7 +225,7 @@ if __name__ == '__main__':
             'sum': 0,
         }
 
-        while update_step_idx < max_step_num:
+        while update_step_idx < all_params['max_step_num']:
 
             # Train loop
             for _, data in enumerate(train_train_loader):
@@ -229,30 +233,42 @@ if __name__ == '__main__':
                 model.train()
 
                 single_video_idx += 1
-
                 label = data['label'].to(device)
                 weight = data['weight'].to(device).float()
-
+                model_input = None
                 if modality == 'both':
-                    rgb = data['rgb'].to(device)
-                    flow = data['flow'].to(device)
-                    model_input = torch.cat([rgb, flow], dim=2)
+                    if data['rgb'].shape[1] != 0 and data['flow'].shape[1] != 0:
+                        rgb = data['rgb'].to(device)
+                        flow = data['flow'].to(device)
+                        model_input = torch.cat([rgb, flow], dim=2)
+                    else: 
+                        continue
                 elif modality == 'rgb':
-                    model_input = data['rgb'].to(device)
+                    if data['rgb'].shape[1] != 0:
+                        model_input = data['rgb'].to(device)
+                    else:
+                        continue
                 else:
-                    model_input = data['flow'].to(device)
-
-                model_input = model_input.transpose(2, 1)
-                _, _, out, scores, _ = model(model_input)
+                    if data['flow'].shape[1] != 0:
+                        model_input = data['flow'].to(device)
+                    else:
+                        continue
+                #RGB or Flow
+                if model_input.shape[-1] == all_params['feature_dim']:
+                    model_input = model_input.transpose(2, 1)
+                #Both
+                if modality == 'both' and model_input.shape[-1] == all_params['feature_dim']*2:
+                    model_input = model_input.transpose(2, 1)
+                _, _, out, scores, _ = model(model_input) 
 
                 loss_cls = criterion(out, label) * weight
 
-                if diversity_reg:
+                if all_params['diversity_reg']:
                     loss_div = get_diversity_loss(scores) * weight
-                    loss_div = loss_div * diversity_weight
+                    loss_div = loss_div * all_params['diversity_weight']
 
                     loss_norm = get_norm_regularization(scores) * weight
-                    loss_norm = loss_norm * diversity_weight
+                    loss_norm = loss_norm * all_params['diversity_weight']
 
                     loss = loss_cls + loss_div + loss_norm
 
@@ -268,61 +284,60 @@ if __name__ == '__main__':
                 loss.backward()
 
                 # Test and Update
-                if single_video_idx % batch_size == 0:
+                if single_video_idx % all_params['batch_size'] == 0:
 
                     # Test
-                    if update_step_idx % log_freq == 0:
+                    if update_step_idx % all_params['log_freq'] == 0:
 
-                        train_acc, train_loss, train_map = test(
+                        train_acc, train_loss = test(
                             model, train_test_loader, modality)
 
                         logger.scalar_summary('Train Accuracy', train_acc,
                                               update_step_idx)
 
+                        '''
                         logger.scalar_summary('Train map', train_map,
                                               update_step_idx)
-
+                        '''
                         for k in train_loss.keys():
                             logger.scalar_summary('Train Loss {}'.format(k),
                                                   train_loss[k],
                                                   update_step_idx)
-
+                        
                         if args.test_log:
 
-                            test_acc, test_loss, test_map = test(
+                            test_acc, test_loss = test(
                                 model, test_test_loader, modality)
 
                             logger.scalar_summary('Test Accuracy', test_acc,
-                                                  update_step_idx)
-
-                            logger.scalar_summary('Test map', test_map,
                                                   update_step_idx)
 
                             for k in test_loss.keys():
                                 logger.scalar_summary('Test Loss {}'.format(k),
                                                       test_loss[k],
                                                       update_step_idx)
-
+                    print('Train Accuracy:{}, Test Accuracy:{}'.format(train_acc, test_acc))
+                    
                     # Batch Update
                     update_step_idx += 1
 
                     for k, v in loss_recorder.items():
 
                         print('Step {}: Loss_{}-{}'.format(
-                            update_step_idx, k, v / batch_size))
+                            update_step_idx, k, v / all_params['batch_size']))
 
                         logger.scalar_summary('Loss_{}_ps'.format(k),
-                                              v / batch_size, update_step_idx)
+                                              v / all_params['batch_size'], update_step_idx)
 
                         loss_recorder[k] = 0
 
                     optimizer.step()
                     optimizer.zero_grad()
 
-                    if learning_rate_decay:
+                    if all_params['learning_rate_decay']:
                         scheduler.step()
 
-                    if update_step_idx in check_points:
+                    if update_step_idx in all_params['check_points']:
                         torch.save(
                             model.state_dict(),
                             os.path.join(
@@ -330,26 +345,26 @@ if __name__ == '__main__':
                                 'model-{}-{}'.format(modality,
                                                      update_step_idx)))
 
-                    if update_step_idx >= max_step_num:
+                    if update_step_idx >= all_params['max_step_num']:
                         break
 
-    train_dataset_dict = get_dataset(dataset_name=dataset_name,
-                                     subset=args.train_subset_name,
-                                     file_paths=file_paths,
-                                     sample_rate=sample_rate,
-                                     base_sample_rate=base_sample_rate,
-                                     action_class_num=action_class_num,
+    
+    train_dataset_dict = get_dataset(dataset_name=all_params['dataset_name'], 
+                                     subset=args.train_subset_name, 
+                                     file_paths=all_params['file_paths'],
+                                     sample_rate=all_params['sample_rate'],
+                                     base_sample_rate=all_params['base_sample_rate'],
+                                     action_class_num=all_params['action_class_num'],
                                      modality='both',
-                                     feature_type=feature_type,
-                                     feature_oversample=feature_oversample,
+                                     feature_type=all_params['feature_type'],
+                                     feature_oversample=all_params['feature_oversample'],
                                      temporal_aug=True,
-                                     load_background=with_bg)
+                                     load_background=all_params['with_bg'])
 
-    train_train_dataset = SingleVideoDataset(
-        train_dataset_dict,
-        single_label=True,
-        random_select=True,
-        max_len=training_max_len)  # To be checked
+    train_train_dataset = SingleVideoDataset(train_dataset_dict,
+                                             single_label=True,
+                                             random_select=True,
+                                             max_len=all_params['training_max_len'])  # To be checked
 
     train_test_dataset = SingleVideoDataset(train_dataset_dict,
                                             single_label=True,
@@ -365,18 +380,16 @@ if __name__ == '__main__':
                                                     batch_size=1,
                                                     pin_memory=True,
                                                     shuffle=False)
-
     if args.test_log:
-
-        test_dataset_dict = get_dataset(dataset_name=dataset_name,
-                                        subset=args.test_subset_name,
-                                        file_paths=file_paths,
-                                        sample_rate=sample_rate,
-                                        base_sample_rate=base_sample_rate,
-                                        action_class_num=action_class_num,
+        test_dataset_dict = get_dataset(dataset_name=all_params['dataset_name'],
+                                        subset=args.test_subset_name, 
+                                        file_paths=all_params['file_paths'],
+                                        sample_rate=all_params['sample_rate'],
+                                        base_sample_rate=all_params['base_sample_rate'],
+                                        action_class_num=all_params['action_class_num'],
                                         modality='both',
-                                        feature_type=feature_type,
-                                        feature_oversample=feature_oversample,
+                                        feature_type=all_params['feature_type'],
+                                        feature_oversample=all_params['feature_oversample'],
                                         temporal_aug=True,
                                         load_background=False)
 
@@ -393,13 +406,15 @@ if __name__ == '__main__':
 
         test_test_loader = None
 
-    for run_idx in range(train_run_num):
+    for run_idx in range(all_params['train_run_num']):
 
-        naming = '{}-run-{}'.format(experiment_naming, run_idx)
-
+        naming = '{}-run-{}'.format(all_params['experiment_naming'], run_idx)
+        
         train(train_train_loader, train_test_loader, test_test_loader, 'rgb',
               naming)
+        
         train(train_train_loader, train_test_loader, test_test_loader, 'flow',
               naming)
+        
         train(train_train_loader, train_test_loader, test_test_loader, 'both',
               naming)
