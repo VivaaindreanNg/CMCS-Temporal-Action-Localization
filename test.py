@@ -10,7 +10,7 @@ from model import BackboneNet
 from dataset import SingleVideoDataset
 from utils import get_dataset, load_config_file
 
-import pdb
+#import pdb
 
 device = torch.device('cuda')
 
@@ -20,23 +20,11 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('--config-file', type=str)
-    parser.add_argument('--train-subset-name', type=str)
     parser.add_argument('--test-subset-name', type=str)
-
-    parser.add_argument('--include-train',
-                        dest='include_train',
-                        action='store_true')
-    parser.add_argument('--no-include-train',
-                        dest='include_train',
-                        action='store_false')
-    parser.set_defaults(include_train=True)
-
     args = parser.parse_args()
 
     print(args.config_file)
-    print(args.train_subset_name)
     print(args.test_subset_name)
-    print(args.include_train)
 
     all_params = load_config_file(args.config_file)
     locals().update(all_params)
@@ -69,7 +57,7 @@ if __name__ == '__main__':
             cat = torch.cat([rgb, flow], dim=1)
 
             with torch.no_grad():
-
+                #Early Fusion
                 if modality == 'both':
                     avg_score, weight, global_score, branch_scores, _ = model_both.forward(
                         cat)  # Add softmax
@@ -79,6 +67,7 @@ if __name__ == '__main__':
                 elif modality == 'flow':
                     avg_score, weight, global_score, branch_scores, _ = model_flow.forward(
                         flow)
+                #Late Fusion
                 else:
                     avg_score1, weight1, global_score1, branch_scores1, _ = model_rgb.forward(
                         rgb)
@@ -110,43 +99,16 @@ if __name__ == '__main__':
                      global_score=global_score.mean(0).cpu().numpy(),
                      branch_scores=branch_scores)
 
-    if args.include_train:
-
-        train_dataset_dict = get_dataset(
-            dataset_name=dataset_name,
-            subset=args.train_subset_name,
-            file_paths=file_paths,
-            sample_rate=sample_rate,
-            base_sample_rate=base_sample_rate,
-            action_class_num=action_class_num,
-            modality='both',
-            feature_type=feature_type,
-            feature_oversample=feature_oversample,
-            temporal_aug=False,
-        )
-
-        train_detect_dataset = SingleVideoDataset(
-            train_dataset_dict, single_label=False,
-            random_select=False)  # SIngle label false!!!
-
-        train_detect_loader = torch.utils.data.DataLoader(train_detect_dataset,
-                                                          batch_size=1,
-                                                          pin_memory=True,
-                                                          shuffle=False)
-
-    else:
-        train_detect_loader = None
-
     test_dataset_dict = get_dataset(
-        dataset_name=dataset_name,
+        dataset_name=all_params['dataset_name'],
         subset=args.test_subset_name,
-        file_paths=file_paths,
-        sample_rate=sample_rate,
-        base_sample_rate=base_sample_rate,
-        action_class_num=action_class_num,
+        file_paths=all_params['file_paths'],
+        sample_rate=all_params['sample_rate'],
+        base_sample_rate=all_params['base_sample_rate'],
+        action_class_num=all_params['action_class_num'],
         modality='both',
-        feature_type=feature_type,
-        feature_oversample=feature_oversample,
+        feature_type=all_params['feature_type'],
+        feature_oversample=all_params['feature_oversample'],
         temporal_aug=False,
     )
 
@@ -159,18 +121,18 @@ if __name__ == '__main__':
                                                      pin_memory=True,
                                                      shuffle=False)
 
-    for run_idx in range(train_run_num):
+    for run_idx in range(all_params['train_run_num']):
 
-        naming = '{}-run-{}'.format(experiment_naming, run_idx)
+        naming = '{}-run-{}'.format(all_params['experiment_naming'], run_idx)
 
-        for cp_idx, check_point in enumerate(check_points):
+        for cp_idx, check_point in enumerate(all_params['check_points']):
 
-            model_both = BackboneNet(in_features=feature_dim * 2,
-                                     **model_params).to(device)
-            model_rgb = BackboneNet(in_features=feature_dim,
-                                    **model_params).to(device)
-            model_flow = BackboneNet(in_features=feature_dim,
-                                     **model_params).to(device)
+            model_both = BackboneNet(in_features=all_params['feature_dim'] * 2,
+                                     **all_params['model_params']).to(device)
+            model_rgb = BackboneNet(in_features=all_params['feature_dim'],
+                                    **all_params['model_params']).to(device)
+            model_flow = BackboneNet(in_features=all_params['feature_dim'],
+                                     **all_params['model_params']).to(device)
 
             model_both.load_state_dict(
                 torch.load(
@@ -193,12 +155,11 @@ if __name__ == '__main__':
 
                 save_dir = os.path.join(
                     'cas-features',
-                    '{}-run-{}-{}-{}'.format(experiment_naming, run_idx,
-                                             check_point, modality))
-
-                if args.include_train:
-                    get_features(train_detect_loader, model_rgb, model_flow,
-                                 model_both, modality, save_dir)
+                    '{}-run-{}-{}-{}'.format(
+                        naming, 
+                        run_idx,
+                        check_point, 
+                        modality))
 
                 get_features(test_detect_loader, model_rgb, model_flow,
                              model_both, modality, save_dir)
