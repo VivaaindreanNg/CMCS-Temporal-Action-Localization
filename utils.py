@@ -7,7 +7,7 @@ import json
 import subprocess
 import numpy as np
 import pandas as pd
-import matlab.engine
+#import matlab.engine
 from PIL import Image
 from scipy.io import loadmat
 from collections import defaultdict
@@ -89,7 +89,7 @@ def load_config_file(config_file):
 
 ################ Matlab #####################
 
-matlab_eng = matlab.engine.start_matlab()
+#matlab_eng = matlab.engine.start_matlab()
 
 ################ Class Name Mapping #####################
 
@@ -101,13 +101,12 @@ ucf_crime_old_cls_names = {
     5: 'Burglary',
     6: 'Explosion',
     7: 'Fighting',
-    8: 'Normal',
-    9: 'RoadAccidents',
-    10: 'Robbery',
-    11: 'Shooting',
-    12: 'Shoplifting',
-    13: 'Stealing',
-    14: 'Vandalism'
+    8: 'RoadAccidents',
+    9: 'Robbery',
+    10: 'Shooting',
+    11: 'Shoplifting',
+    12: 'Stealing',
+    13: 'Vandalism'
 }
 
 ucf_crime_old_cls_indices = {v: k for k, v in ucf_crime_old_cls_names.items()}
@@ -120,14 +119,13 @@ ucf_crime_new_cls_names = {
     4: 'Burglary',
     5: 'Explosion',
     6: 'Fighting',
-    7: 'Normal',
-    8: 'RoadAccidents',
-    9: 'Robbery',
-    10: 'Shooting',
-    11: 'Shoplifting',
-    12: 'Stealing',
-    13: 'Vandalism',
-    14: 'Background',
+    7: 'RoadAccidents',
+    8: 'Robbery',
+    9: 'Shooting',
+    10: 'Shoplifting',
+    11: 'Stealing',
+    12: 'Vandalism',
+    13: 'Background'
 }
 
 ucf_crime_new_cls_indices = {v: k for k, v in ucf_crime_new_cls_names.items()}
@@ -165,6 +163,10 @@ def __get_ucf_crime_anno(anno_dir):
     
     for entry in anno_data:
         video_name = entry[0].split('.')[0]
+        #TODO:Run 2nd variation experiment
+        if video_name.startswith('Normal'):
+            continue
+
         #action_label points to Abuse, Arrest, Arson....
         action_label = entry[2] 
         #points to indices of Abuse, Arrest,...
@@ -253,6 +255,9 @@ def __load_features(
 
     # Load all features
     for k in dataset_dict.keys():
+        #TODO:Run 2nd variation experiment
+        if k.startswith('Normal'):
+            continue
 
         print('Loading: {}'.format(k))
 
@@ -311,11 +316,12 @@ def __load_background(
     bg_mask_files.sort()
 
     for bg_mask_file in bg_mask_files:
+      
+        video_name = bg_mask_file[:-4]
+        #TODO: Run 2nd variation experiment
+        if video_name.startswith('Normal'):
+            continue
 
-        if dataset_name == 'ucf_crime':
-            video_name = bg_mask_file[:-4]
-        else:
-            video_name = bg_mask_file[2:-4]
 
         new_key = video_name + '_bg'
 
@@ -522,7 +528,23 @@ def interpolate(x,
 ################ THUMOS Evaluation #####################
 
 
-def eval_thumos_detect(detfilename, gtpath, subset, threshold):
+def eval_ucf_crime_detect(detfilename, gtpath, subset, threshold):
+    '''
+    Parameters
+    ----------
+    detfilename : Output of predictions based on modality (rgb/flow/both), where
+    each line contains action intervals: 
+        [video_name, start, end, labels, confidence_score].
+    gtpath : Path to annotation file.
+    subset : 'test', for testing file.
+    threshold : IOU threshold: .1, .2, .3, .4...
+
+    Returns
+    -------
+    aps : Average precision for every class.
+    mean_ap : Mean average precision.
+
+    '''
     assert (subset in ['test', 'val'])
 
     matlab_eng.addpath('THUMOS14_evalkit_20150930')
@@ -664,7 +686,7 @@ def get_snippet_gt(annos, fps, sample_rate, snippet_num):
     return gt
 
 
-def visualize_scores_barcodes(score_titles,
+def visualize_scores_barcodes(score_titles, #TODO: score_titles=[GT, baseline, branch1, ...]
                               scores,
                               ylim=None,
                               out_file=None,
