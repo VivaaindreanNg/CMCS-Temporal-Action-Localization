@@ -83,7 +83,7 @@ if __name__ == '__main__':
                     global_score = (global_score1 + global_score2) / 2
 
                     branch_scores = []
-
+                    #all_params['model_params']['cls_branch_num']
                     for branch in range(model_params['cls_branch_num']):
 
                         branch_scores.append(
