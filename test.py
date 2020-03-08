@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     for run_idx in range(all_params['train_run_num']):
 
-        naming = '{}'.format(all_params['experiment_naming'], run_idx)
+        naming = '{}-run-{}'.format(all_params['experiment_naming'], run_idx)
 
         for cp_idx, check_point in enumerate(all_params['check_points']):
 
@@ -155,9 +155,8 @@ if __name__ == '__main__':
 
                 save_dir = os.path.join(
                     'cas-features',
-                    '{}-run-{}-{}-{}'.format(
-                        naming, 
-                        run_idx,
+                    '{}-{}-{}'.format(
+                        naming,
                         check_point, 
                         modality))
 
