@@ -31,14 +31,14 @@ Run the `tools/train_test_split.py` to segregate extracted features into val(tra
 
 ## Run
 
-1. Train models with weak supervision (Skip this if you use our trained model):
+1. Train models with weak supervision via torch-nightly==1.2.0 (Skip this if you use our trained model):
 ```
-python3 train.py --config-file {} --train-subset-name {} --test-subset-name {} --test-log
+python train.py --config-file {} --train-subset-name val --test-subset-name test --test-log
 ```
 
 2. Test and save the class activation sequences (CAS):
 ```
-python3 test.py --config-file {} --train-subset-name {} --test-subset-name {} --no-include-train
+python test.py --config-file {} --test-subset-name test
 ```
 
 3. Action localization using the CAS:
@@ -50,7 +50,7 @@ For THUMOS14, predictions are saved in `output/predictions` and final performanc
 For ActivityNet, predictions are saved in `output/predictions` and final performances can be obtained via the dataset evaluation API.
 
 #### Settings
-This experiment is evaluated on UCF-Crime with I3D features. Experiment settings and their auguments are listed as following. 
+This experiment is evaluated on UCF-Crime with I3D features. Experiment settings and their arguments are listed as following. 
 
 |           config-file          | train-subset-name | test-subset-name |
 |:------------------------------:|:-----------------:|:----------------:|
