@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-from logger import Logger
+
 from model import BackboneNet
 from dataset import SingleVideoDataset
 from utils import get_dataset, load_config_file
@@ -184,14 +184,16 @@ if __name__ == '__main__':
         return accuracy, avg_loss
 
     def train(train_train_loader, train_test_loader, test_test_loader, modality,
-              naming):
-
+              naming, lr_val):
+        plt.figure()
+        #For plotting loss graph
+        loss_val = []   
+        step_list = []
         assert (modality in ['both', 'rgb', 'flow'])
 
         log_dir = os.path.join('logs', naming, modality)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        logger = Logger(log_dir)
 
         save_dir = os.path.join('models', naming)
         if not os.path.exists(save_dir):
@@ -205,7 +207,7 @@ if __name__ == '__main__':
                                 **all_params['model_params']).to(device)
 
         optimizer = optim.Adam(model.parameters(),
-                               lr=all_params['learning_rate'],
+                               lr=lr_val,
                                weight_decay=all_params['weight_decay'])
 
         if all_params['learning_rate_decay']:
@@ -291,31 +293,12 @@ if __name__ == '__main__':
 
                         train_acc, train_loss = test(
                             model, train_test_loader, modality)
-
-                        logger.scalar_summary('Train Accuracy', train_acc,
-                                              update_step_idx)
-
-                        '''
-                        logger.scalar_summary('Train map', train_map,
-                                              update_step_idx)
-                        '''
-                        for k in train_loss.keys():
-                            logger.scalar_summary('Train Loss {}'.format(k),
-                                                  train_loss[k],
-                                                  update_step_idx)
                         
                         if args.test_log:
 
                             test_acc, test_loss = test(
                                 model, test_test_loader, modality)
 
-                            logger.scalar_summary('Test Accuracy', test_acc,
-                                                  update_step_idx)
-
-                            for k in test_loss.keys():
-                                logger.scalar_summary('Test Loss {}'.format(k),
-                                                      test_loss[k],
-                                                      update_step_idx)
                     print('Train Accuracy:{}, Test Accuracy:{}'.format(train_acc, test_acc))
                     
                     # Batch Update
@@ -326,10 +309,21 @@ if __name__ == '__main__':
                         print('Step {}: Loss_{}-{}'.format(
                             update_step_idx, k, v / all_params['batch_size']))
 
-                        logger.scalar_summary('Loss_{}_ps'.format(k),
-                                              v / all_params['batch_size'], update_step_idx)
+                        #Plot loss over every iterations 
+                        if k == 'sum':
+                            step_list.append(update_step_idx)
+                            loss_val.append(v/all_params['batch_size'])
+                            plt.title('Classification accuracy: {:.4f}'.format(train_acc))
+                            plt.xlabel('Iterations')
+                            plt.ylabel('Loss')
 
                         loss_recorder[k] = 0
+                    
+                    if update_step_idx % all_params['log_freq'] == 0: #Plot graph every 500 iterations
+                        plt.plot(step_list, loss_val)
+                        img = 'Loss_LR-{}.png'.format(lr_val)
+                        img_pth = os.path.join(log_dir, img)
+                        plt.savefig(img_pth)
 
                     optimizer.step()
                     optimizer.zero_grad()
@@ -406,15 +400,21 @@ if __name__ == '__main__':
 
         test_test_loader = None
 
+    #lrlog_range = [-3.4879, -3.0146]   
     for run_idx in range(all_params['train_run_num']):
-
+        '''
+        #Random search lr
+        lr_log = np.random.uniform(low=lrlog_range[0], high=lrlog_range[1], size=None)
+        lr_val = 10 ** lr_log
+        '''
+        lr_val=all_params['learning_rate']
         naming = '{}-run-{}'.format(all_params['experiment_naming'], run_idx)
         
         train(train_train_loader, train_test_loader, test_test_loader, 'rgb',
-              naming)
+              naming, lr_val)
         
         train(train_train_loader, train_test_loader, test_test_loader, 'flow',
-              naming)
+              naming, lr_val)
         
         train(train_train_loader, train_test_loader, test_test_loader, 'both',
-              naming)
+              naming, lr_val)
