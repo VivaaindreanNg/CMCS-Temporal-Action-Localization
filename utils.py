@@ -543,8 +543,8 @@ def eval_ucf_crime_detect(detfilename, gtpath, subset, threshold):
     -------
     aps : Average precision for every class.
     mean_ap : Mean average precision.
-
     '''
+    
     assert (subset in ['test', 'val'])
 
     matlab_eng.addpath('THUMOS14_evalkit_20150930')
