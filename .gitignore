@@ -7,4 +7,5 @@ logs/*
 BoW/*
 cas-features/*
 scripts/*
-
+.spyproject/*
+classify_vids.py
