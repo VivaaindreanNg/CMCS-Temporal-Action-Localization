@@ -89,7 +89,7 @@ if __name__ == '__main__':
                             to_rgb = os.path.join(args.to_rgb, ucf_crime_old_cls_names[clss])
                             to_rgb = os.path.join(to_rgb, video_test_set)
                             rgb_pth_list.append(to_rgb)
-                            to_rgb = 'D:/Input_Frame_dirs'
+                            to_rgb = args.to_rgb
 
 
                 #### Obtain ground truth  ####
