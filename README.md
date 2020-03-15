@@ -7,7 +7,7 @@ Code for 'Completeness Modeling and Context Separation for Weakly Supervised Tem
 ## Recommended Environment
 * Python 3.5 and above
 * Cuda 10.0
-* PyTorch 0.4
+* PyTorch 0.4 or 1.2.0
 
 ## Prerequisites
 * Install dependencies: `pip3 install -r requirements.txt`.
@@ -22,7 +22,7 @@ We employ I3D features in the paper.
 
 ### Generate Static Clip Masks:
 
-Static clip masks are used for hard negative mining. They are included in the download features.
+Static clip masks are used for hard negative mining. 
 If you want to generate the masks by yourself, please refer to `tools/get_static_clips.py`.
 
 ### Data preparation for Training & Testing
@@ -50,7 +50,7 @@ python evaluate_roc.py --config-file {} --test-subset-name {}
 ```
 python evaluate_map.py --config-file {} --test-subset-name {}
 ```
-For UCF-Crime, localized predictions (for each modalities) are saved in `output/predictions` and final performances (mAP for each modalities spanning across .1 to .5 IoU thresholds) are saved in a json file in `output`.
+For UCF-Crime, localized predictions (for each modalities) are saved in `outputs/predictions` and final performances (mAP for each modalities spanning across .1 to .5 IoU thresholds) are saved in a json file in `outputs`.
 
 #### Settings
 This experiment is evaluated on UCF-Crime with I3D features. Experiment settings and their arguments are listed as following. 
