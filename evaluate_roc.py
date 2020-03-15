@@ -44,16 +44,12 @@ if __name__ == '__main__':
         '--config-file', type=str,
         help='Path to config files'
     )
-    parser.add_argument(
-        '--to-rgb', type=str, 
-        help='Path to dir containing rgb directories of every video'
-    )
+
     parser.add_argument('--test-subset-name', type=str)
     args = parser.parse_args()
 
     print(args.config_file)
     print(args.test_subset_name)
-    print(args.to_rgb)
 
     all_params = load_config_file(args.config_file)
     locals().update(all_params)
@@ -78,19 +74,6 @@ if __name__ == '__main__':
                 list_video_names = os.listdir(cas_dir)
                 vid_name = [v.split('/')[-1][:-4] for v in list_video_names] # Obtain video's name
 
-                
-
-                #To contain path of every single video's rgb dir (To obtain frame count per video)
-                rgb_pth_list = []
-                for clss in range(1, all_params['action_class_num']+1):
-                    for video_test_set in vid_name:
-                        if video_test_set.startswith(ucf_crime_old_cls_names[clss]):
-                            video_test_set = os.path.join(video_test_set, 'rgb')
-                            to_rgb = os.path.join(args.to_rgb, ucf_crime_old_cls_names[clss])
-                            to_rgb = os.path.join(to_rgb, video_test_set)
-                            rgb_pth_list.append(to_rgb)
-                            to_rgb = args.to_rgb
-
 
                 #### Obtain ground truth  ####
                 gt_file_pth = all_params['file_paths'][args.test_subset_name]['anno_dir']
@@ -103,10 +86,9 @@ if __name__ == '__main__':
 
                 All_det, All_GT = [], []
 
-                for vid, j in zip(list_video_names, rgb_pth_list):
+                for vid in list_video_names:
                     scores, frame_cnt, _, _ = metric_scores(
                         os.path.join(cas_dir, vid), 
-                        j, 
                         **all_params
                     )
                     

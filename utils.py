@@ -7,7 +7,6 @@ import json
 import subprocess
 import numpy as np
 import pandas as pd
-#import matlab.engine
 import torch
 import torch.nn.functional as F
 from PIL import Image
@@ -88,10 +87,6 @@ def load_config_file(config_file):
     print(all_params)
     return all_params
 
-
-################ Matlab #####################
-
-#matlab_eng = matlab.engine.start_matlab()
 
 ################ Class Name Mapping #####################
 
@@ -526,39 +521,6 @@ def interpolate(x,
 
     return out
 
-
-################ THUMOS Evaluation #####################
-
-
-def eval_ucf_crime_detect(detfilename, gtpath, subset, threshold):
-    '''
-    Parameters
-    ----------
-    detfilename : Output of predictions based on modality (rgb/flow/both), where
-    each line contains action intervals: 
-        [video_name, start, end, labels, confidence_score].
-    gtpath : Path to annotation file.
-    subset : 'test', for testing file.
-    threshold : IOU threshold: .1, .2, .3, .4...
-
-    Returns
-    -------
-    aps : Average precision for every class.
-    mean_ap : Mean average precision at every threshold.
-    '''
-    
-    assert (subset in ['test', 'val'])
-
-    matlab_eng.addpath('THUMOS14_evalkit_20150930')
-    aps = matlab_eng.TH14evalDet(detfilename, gtpath, subset, threshold)
-
-    aps = np.array(aps)
-    mean_ap = aps.mean()
-
-    return aps, mean_ap
-
-
-
 ################ Action Localization #####################
 
 
@@ -737,23 +699,19 @@ def segment_iou(pred_segment, gt_segments):
     return tIoU
 
 
-
-
 def softmax(x, dim):
     x = F.softmax(torch.from_numpy(x), dim=dim)
     return x.numpy()
 
+import pdb
 
-def metric_scores(pth, PATH_TO_RGB, **all_params):
+def metric_scores(pth, **all_params):
     '''
     Arguments:
     -------------
     pth: 
         Path to a video's output from test.py module based
         on rgb/flow/both/late-fusion modality. 
-
-    PATH_TO_RGB:
-        Path to corresponding video's RGB directory
 
     all_params: 
         Value of all parameters based on config file
@@ -774,9 +732,7 @@ def metric_scores(pth, PATH_TO_RGB, **all_params):
     detect_params = all_params['detect_params']
     cas_data = np.load(pth)
     video_name = pth.split('/')[-1][:-4]
-    frame_cnt=len(os.listdir(PATH_TO_RGB))
     fps = 30
-    duration = frame_cnt/fps
     out_detections = []
     metric = None
 
@@ -785,8 +741,8 @@ def metric_scores(pth, PATH_TO_RGB, **all_params):
     branch_scores = cas_data['branch_scores']
 
     global_score = softmax(global_score, dim=0)
-    num_class = len(ucf_crime_old_cls_names.keys())
-    
+    frame_cnt = avg_score.shape[0]*all_params['base_sample_rate']*all_params['sample_rate']
+    duration = frame_cnt/fps
     ######################## Get Average score for all branches ########################
     for class_id in range(all_params['action_class_num']):
         if global_score[class_id] <= 0.1:
@@ -847,7 +803,7 @@ def metric_scores(pth, PATH_TO_RGB, **all_params):
     branch_scores_dict = {}
     
     for branch_num in range(branch_scores.shape[0]):
-        for class_id in range(num_class):
+        for class_id in range(all_params['action_class_num']):
             if global_score[class_id] <= 0.1:
                 continue
             
