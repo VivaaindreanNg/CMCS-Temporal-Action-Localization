@@ -104,7 +104,7 @@ if __name__ == '__main__':
                 All_det, All_GT = [], []
 
                 for vid, j in zip(list_video_names, rgb_pth_list):
-                    scores, frame_cnt, _, detected_list = metric_scores(
+                    scores, frame_cnt, _, _ = metric_scores(
                         os.path.join(cas_dir, vid), 
                         j, 
                         **all_params
