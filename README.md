@@ -29,7 +29,7 @@ If you want to generate the masks by yourself, please refer to `tools/get_static
 
 Run the `tools/train_test_split.py` to segregate extracted features into val(training subdirectories) & test(testing subdirectories), similar as the one configured in `configs/ucf_crime-I3D.json`. 
 
-## Run
+## Run (All train, test and evaluation were done with pytorch==1.2.0)
 
 1. Train models with weak supervision via torch-nightly==1.2.0 (Skip this if you use our trained model):
 ```
@@ -41,7 +41,13 @@ python train.py --config-file {} --train-subset-name val --test-subset-name test
 python test.py --config-file {} --test-subset-name test
 ```
 
-3. Action localization using the CAS:
+3. Compute area under ROC (at frame-level) using the saved CAS:
+```
+python evaluate_roc.py --config-file {} --to-rgb {} --test-subset-name {}
+```
+* The ``` --to-rgb ../../Input_Frame_dirs ``` refers to the root path containing rgb & flow for every videos. For references, [head over to here](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/pytorch-i3d-feature-extraction)
+
+4. Action localization using the CAS:
 ```
 python3 detect.py --config-file {} --train-subset-name {} --test-subset-name {} --no-include-train
 ```
