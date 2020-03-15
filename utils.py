@@ -542,7 +542,7 @@ def eval_ucf_crime_detect(detfilename, gtpath, subset, threshold):
     Returns
     -------
     aps : Average precision for every class.
-    mean_ap : Mean average precision.
+    mean_ap : Mean average precision at every threshold.
     '''
     
     assert (subset in ['test', 'val'])
@@ -555,22 +555,6 @@ def eval_ucf_crime_detect(detfilename, gtpath, subset, threshold):
 
     return aps, mean_ap
 
-
-def eval_thumos_recog(scores, labels, action_class_num):
-    matlab_eng.addpath('THUMOS14_evalkit_20150930')
-
-    aps = []
-
-    for i in range(action_class_num):  # Without bg
-        aps.append(
-            matlab_eng.TH14evalRecog_clspr(
-                matlab.double(scores[:, i:i + 1].tolist()),
-                matlab.double(labels[:, i:i + 1].tolist())))
-
-    aps = np.array(aps)
-    mean_ap = aps.mean()
-
-    return aps, mean_ap
 
 
 ################ Action Localization #####################
@@ -670,200 +654,84 @@ def output_detections_ucf_crime(out_detections, out_file_name):
 
 ################ Visualization #####################
 
-
-def get_snippet_gt(annos, fps, sample_rate, snippet_num):
-
-    gt = np.zeros((snippet_num,))
-
-    for i in annos:
-        start = int(i[0] * fps // sample_rate)
-        end = int(i[1] * fps // sample_rate)
-
-        gt[start:start + 1] = 0.5
-        gt[end:end + 1] = 0.5
-        gt[start + 1:end] = 1
-
-    return gt
-
-
-def visualize_scores_barcodes(score_titles, #TODO: score_titles=[GT, baseline, branch1, ...]
-                              scores,
-                              ylim=None,
-                              out_file=None,
-                              show=False):
-
-    lens = [i.shape[0] for i in scores]
-    assert (len(set(lens)) == 1)
-    frame_cnt = lens[0]  # Not all frame are visualized, clipped at end
-
-    subplot_sum = len(score_titles)
-
-    fig = plt.figure(figsize=(20, 10))
-
-    height_ratios = [1 for _ in range(subplot_sum)]
-
-    gs = gridspec.GridSpec(subplot_sum, 1, height_ratios=height_ratios)
-
-    for j in range(len(score_titles)):
-
-        fig.add_subplot(gs[j])
-
-        plt.xticks([])
-        plt.yticks([])
-
-        plt.title(score_titles[j], position=(-0.1, 0))
-
-        axes = plt.gca()
-
-        if j == 0:
-            barprops = dict(aspect='auto',
-                            cmap=plt.cm.PiYG,
-                            interpolation='nearest',
-                            vmin=-1,
-                            vmax=1)
-        elif j == 1:
-            barprops = dict(aspect='auto',
-                            cmap=plt.cm.seismic,
-                            interpolation='nearest',
-                            vmin=-1,
-                            vmax=1)
-        elif j == 2 or j == 3:
-
-            if ylim:
-                barprops = dict(aspect='auto',
-                                cmap=plt.cm.Purples,
-                                interpolation='nearest',
-                                vmin=ylim[0],
-                                vmax=ylim[1])
-            else:
-                barprops = dict(
-                    aspect='auto',
-                    cmap=plt.cm.Purples,  #BrBG
-                    interpolation='nearest')
-
-        else:
-            if ylim:
-                barprops = dict(aspect='auto',
-                                cmap=plt.cm.Blues,
-                                interpolation='nearest',
-                                vmin=ylim[0],
-                                vmax=ylim[1])
-            else:
-                barprops = dict(aspect='auto',
-                                cmap=plt.cm.Blues,
-                                interpolation='nearest')
-
-        axes.imshow(scores[j].reshape((1, -1)), **barprops)
-
-    if out_file:
-        plt.savefig(out_file)
-
-    if show:
-        plt.show()
-
-    plt.close()
+def prepare_gt(gtpth):
+    gt_list = []
+    fps = 30
+    f = open(gtpth, 'r')
+    for line in f.readlines():
+        line2 = []
+        line = line.replace('.mp4', '')
+        line = line.split('  ')
+        # Skip Normal videos
+        if line[0].startswith('Normal'):
+            continue
+        gt_list.append(line)
+    
+    df = pd.DataFrame(gt_list)
+    df.columns = ['videoname', 'cls', 'start1', 'end1', 'start2', 'end2', '_']
+    df = df.drop(columns=['_'])
+    
+    # Every row of ground-truth annotations consist of only [videoname, cls, start, end]
+    gtdf = df.loc[df['start2'] != '-1']
+    gtdf_col = ['videoname', 'cls', 'start2', 'end2', 'start2', 'end2']
+    gtdf = gtdf.reindex(columns=gtdf_col)
+    gtdf.columns = df.columns
+    gtdf = df.append(gtdf)
+    gtdf = gtdf.sort_values(by=['videoname', 'start1'])
+    gtdf = gtdf.rename(columns = {'start1': 'start', 'end1': 'end'})
+    gtdf = gtdf.drop(columns=['start2', 'end2'])
+    gtdf['start'] = gtdf['start'].apply(lambda x: np.round(int(x)/fps, decimals=2))
+    gtdf['end'] = gtdf['end'].apply(lambda x: np.round(int(x)/fps, decimals=2))
+    gtdf['cls'] = gtdf['cls'].apply(lambda x: ucf_crime_old_cls_indices[x])
+    f.close()
+    return gtdf
 
 
-def visualize_video_with_scores_barcodes(images_dir,
-                                         images_prefix,
-                                         score_titles,
-                                         scores,
-                                         out_file,
-                                         fps,
-                                         ylim=None):  # Fps: original video fps
+def prepare_detections(detlist): 
+    columns = ['videoname', 'start', 'end', 'cls', 'conf'] 
+    if detlist == []: #Empty detections
+        df = pd.DataFrame(columns=columns) 
+    else:
+        df = pd.DataFrame(detlist)
+        df.columns = columns   
+    return df
 
-    images_paths = [
-        os.path.join(images_dir, i)
-        for i in os.listdir(images_dir)
-        if i.startswith(images_prefix)
-    ]
 
-    images_paths.sort()
+def segment_iou(pred_segment, gt_segments):
+    """
+    Compute the temporal intersection over union between a
+    predicted segment and all the test segments.
+    Parameters
+    ----------
+    pred_segment : 1d array
+        Temporal predicted segment containing [starting, ending] times.
+    gt_segments : 2d array
+        Temporal ground_truth segments containing N x [starting, ending] times.
+    Outputs
+    -------
+    tIoU : 1d array
+        Temporal intersection over union score of the N's ground-truth segments.
+    """
+    pred_segment = pred_segment.astype(float)
+    tIoU = None
 
-    lens = [i.shape[0] for i in scores]
-    assert (len(set(lens)) == 1)
-    frame_cnt = lens[0]  # Not all frame are visualized, clipped at end
+    for i in gt_segments:
+        tt1 = np.maximum(pred_segment[0], gt_segments[:, 0])
+        tt2 = np.minimum(pred_segment[1], gt_segments[:, 1])
 
-    subplot_sum = len(score_titles) + 1
+        # Intersection including Non-negative overlap score.
+        segments_intersection = (tt2 - tt1).clip(0)
 
-    temp_dir = './temp_plots'
-    if not os.path.exists(temp_dir):
-        os.makedirs(temp_dir)
+        # Segment union.
+        segments_union = (gt_segments[:, 1] - gt_segments[:, 0]) \
+        + (pred_segment[1] - pred_segment[0]) - segments_intersection
 
-    for i in range(frame_cnt):
+        # Compute overlap as the ratio of the intersection over union of two segments.
+        tIoU = segments_intersection.astype(float) / segments_union
 
-        fig = plt.figure(figsize=(15, 10))
+        if gt_segments.shape[0] < 2: # only single gt segment per vid
+            tIoU = np.array([tIoU])
 
-        height_ratios = [1 for _ in range(subplot_sum)]
-        height_ratios[0] = 12
+    return tIoU
 
-        gs = gridspec.GridSpec(subplot_sum, 1, height_ratios=height_ratios)
 
-        fig.add_subplot(gs[0])
-
-        plt.axis('off')
-        plt.title('Video')
-        plt.imshow(Image.open(images_paths[i]).convert('RGB'))
-
-        for j in range(len(score_titles)):
-
-            fig.add_subplot(gs[j + 1])
-
-            plt.xticks([])
-            plt.yticks([])
-
-            plt.title(score_titles[j], position=(-0.1, 0))
-
-            axes = plt.gca()
-
-            if j == 0:
-                barprops = dict(aspect='auto',
-                                cmap=plt.cm.PiYG,
-                                interpolation='nearest',
-                                vmin=-1,
-                                vmax=1)
-            elif j == 1:
-                barprops = dict(aspect='auto',
-                                cmap=plt.cm.seismic,
-                                interpolation='nearest',
-                                vmin=-1,
-                                vmax=1)
-            elif j == 2 or j == 3:
-
-                if ylim:
-                    barprops = dict(aspect='auto',
-                                    cmap=plt.cm.Purples,
-                                    interpolation='nearest',
-                                    vmin=ylim[0],
-                                    vmax=ylim[1])
-                else:
-                    barprops = dict(aspect='auto',
-                                    cmap=plt.cm.Purples,
-                                    interpolation='nearest')
-
-            else:
-                if ylim:
-                    barprops = dict(aspect='auto',
-                                    cmap=plt.cm.Blues,
-                                    interpolation='nearest',
-                                    vmin=ylim[0],
-                                    vmax=ylim[1])
-                else:
-                    barprops = dict(aspect='auto',
-                                    cmap=plt.cm.Blues,
-                                    interpolation='nearest')
-
-            axes.imshow(scores[j].reshape((1, -1)), **barprops)
-
-            axes.axvline(x=i, color='darkorange')
-
-        plt.savefig(os.path.join(temp_dir, '{:0>6}.png'.format(i)))
-        plt.close()
-
-    subprocess.call([
-        'ffmpeg', '-framerate',
-        str(fps), '-i',
-        os.path.join(temp_dir, '%07d.png'), '-pix_fmt', 'yuv420p', out_file
-    ])
-
-    os.system('rm -r {}'.format(temp_dir))

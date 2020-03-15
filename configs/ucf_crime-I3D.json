@@ -17,13 +17,13 @@
     "feature_dim":1024,
 
     "batch_size":24,
-    "learning_rate":1e-4,
+    "learning_rate":4e-4,
     "learning_rate_decay":false,
     "weight_decay":1e-3,
     
-    "max_step_num":15000,
+    "max_step_num":9000,
     "check_points":[
-        15000
+        9000
     ],
     "log_freq":500,
     
