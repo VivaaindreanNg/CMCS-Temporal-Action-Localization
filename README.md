@@ -43,9 +43,8 @@ python test.py --config-file {} --test-subset-name {}
 
 3. Compute area under ROC (at frame-level) using the saved CAS:
 ```
-python evaluate_roc.py --config-file {} --to-rgb {} --test-subset-name {}
+python evaluate_roc.py --config-file {} --test-subset-name {}
 ```
-* The ``` --to-rgb ../../Input_Frame_dirs ``` refers to the root path containing rgb & flow for every videos. For references, [head over to here](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/pytorch-i3d-feature-extraction)
 
 4. Output localized actions & calculate mAP:
 ```
