@@ -50,9 +50,7 @@ python evaluate_roc.py --config-file {} --test-subset-name {}
 ```
 python evaluate_map.py --config-file {} --test-subset-name {}
 ```
-
-For THUMOS14, predictions are saved in `output/predictions` and final performances are saved in a npz file in `output`.
-For ActivityNet, predictions are saved in `output/predictions` and final performances can be obtained via the dataset evaluation API.
+For UCF-Crime, localized predictions (for each modalities) are saved in `output/predictions` and final performances (mAP for each modalities spanning across .1 to .5 IoU thresholds) are saved in a json file in `output`.
 
 #### Settings
 This experiment is evaluated on UCF-Crime with I3D features. Experiment settings and their arguments are listed as following. 
@@ -64,7 +62,7 @@ This experiment is evaluated on UCF-Crime with I3D features. Experiment settings
 
 ## Trained Models
 
-Our trained models are provided [in this folder](https://github.com/Finspire13/Weakly-Action-Detection/tree/Release-CVPR19/models). To use these trained models, run `test.py` and `detect.py` with the config files [in this folder](https://github.com/Finspire13/Weakly-Action-Detection/tree/Release-CVPR19/configs/trained).
+Trained models are provided [in this folder](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/models/ucf_crime-I3D-run-0). To use these trained models, run `test.py` with the config file [in this folder](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/configs).
 
 ## Citation
 @InProceedings{Liu_2019_CVPR,
