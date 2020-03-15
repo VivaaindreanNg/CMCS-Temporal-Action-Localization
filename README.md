@@ -38,7 +38,7 @@ python train.py --config-file {} --train-subset-name val --test-subset-name test
 
 2. Test and save the class activation sequences (CAS):
 ```
-python test.py --config-file {} --test-subset-name test
+python test.py --config-file {} --test-subset-name {}
 ```
 
 3. Compute area under ROC (at frame-level) using the saved CAS:
@@ -47,9 +47,9 @@ python evaluate_roc.py --config-file {} --to-rgb {} --test-subset-name {}
 ```
 * The ``` --to-rgb ../../Input_Frame_dirs ``` refers to the root path containing rgb & flow for every videos. For references, [head over to here](https://github.com/VivaaindreanNg/CMCS-Temporal-Action-Localization/tree/master/pytorch-i3d-feature-extraction)
 
-4. Action localization using the CAS:
+4. Output localized actions & calculate mAP:
 ```
-python3 detect.py --config-file {} --train-subset-name {} --test-subset-name {} --no-include-train
+python evaluate_map.py --config-file {} --test-subset-name {}
 ```
 
 For THUMOS14, predictions are saved in `output/predictions` and final performances are saved in a npz file in `output`.
