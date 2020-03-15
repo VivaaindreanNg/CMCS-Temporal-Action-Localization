@@ -6,7 +6,7 @@ import argparse
 
 from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
-from demo import metric_scores
+from utils import metric_scores
 from utils import load_config_file, ucf_crime_old_cls_names
 
 

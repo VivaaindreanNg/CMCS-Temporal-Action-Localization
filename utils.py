@@ -8,6 +8,8 @@ import subprocess
 import numpy as np
 import pandas as pd
 #import matlab.engine
+import torch
+import torch.nn.functional as F
 from PIL import Image
 from scipy.io import loadmat
 from collections import defaultdict
@@ -734,4 +736,141 @@ def segment_iou(pred_segment, gt_segments):
 
     return tIoU
 
+
+
+
+def softmax(x, dim):
+    x = F.softmax(torch.from_numpy(x), dim=dim)
+    return x.numpy()
+
+
+def metric_scores(pth, PATH_TO_RGB, **all_params):
+    '''
+    Arguments:
+    -------------
+    pth: 
+        Path to a video's output from test.py module based
+        on rgb/flow/both/late-fusion modality. 
+
+    PATH_TO_RGB:
+        Path to corresponding video's RGB directory
+
+    all_params: 
+        Value of all parameters based on config file
+
+    Returns:
+    --------------
+    metric:
+        The average scores of all branches
+    
+    branch_scores_dict: 
+        Dictionary to store scores of every individual branches
+    
+    out_detections:
+        Entries containing localized detections
+        in the form of [videoname, start, end, class, confidence_score]
+
+    '''
+    detect_params = all_params['detect_params']
+    cas_data = np.load(pth)
+    video_name = pth.split('/')[-1][:-4]
+    frame_cnt=len(os.listdir(PATH_TO_RGB))
+    fps = 30
+    duration = frame_cnt/fps
+    out_detections = []
+    metric = None
+
+    avg_score = cas_data['avg_score']
+    global_score = cas_data['global_score']
+    branch_scores = cas_data['branch_scores']
+
+    global_score = softmax(global_score, dim=0)
+    num_class = len(ucf_crime_old_cls_names.keys())
+    
+    ######################## Get Average score for all branches ########################
+    for class_id in range(all_params['action_class_num']):
+        if global_score[class_id] <= 0.1:
+            continue
+        metric = softmax(avg_score, dim=1)[:, class_id:class_id + 1]
+        metric = normalize(metric)
+
+        metric = interpolate(
+                metric[:, 0],
+                all_params['feature_type'],
+                frame_cnt,
+                all_params['base_sample_rate'] * all_params['sample_rate'],
+                all_params['base_snippet_size'],
+                detect_params['interpolate_type']
+            )
+        metric = np.expand_dims(metric, axis=1)
+
+        ######################## Generate Action Localization ########################
+        mask = detect_with_thresholding(
+            metric, 
+            detect_params['thrh_type'], 
+            detect_params['thrh_value'],
+            detect_params['proc_type'], 
+            detect_params['proc_value'])
+
+        temp_out = mask_to_detections(
+            mask, 
+            metric, 
+            detect_params['weight_inner'],
+            detect_params['weight_outter'])
+
+        for entry in temp_out:
+
+            entry[2] = class_id
+            entry[3] += global_score[class_id] * detect_params['weight_global']
+
+            entry[0] = (entry[0] + detect_params['sample_offset']) / fps
+            entry[1] = (entry[1] + detect_params['sample_offset']) / fps
+
+            entry[0] = max(0, entry[0])
+            entry[1] = max(0, entry[1])
+            entry[0] = min(duration, entry[0])
+            entry[1] = min(duration, entry[1])
+
+        for entry_id in range(len(temp_out)):
+            temp_out[entry_id] = [video_name] + temp_out[entry_id]
+
+        out_detections += temp_out
+
+    for entry in out_detections:
+        class_id = entry[3]
+        class_name = new_cls_names['ucf_crime'][class_id]
+        old_class_id = int(old_cls_indices['ucf_crime'][class_name])
+        entry[3] = old_class_id
+
+        
+    ######################## Get every individual branch scores ########################
+    branch_scores_dict = {}
+    
+    for branch_num in range(branch_scores.shape[0]):
+        for class_id in range(num_class):
+            if global_score[class_id] <= 0.1:
+                continue
+            
+            b_metric = softmax(branch_scores[branch_num, 0], dim=1)[:, class_id:class_id + 1]
+            b_metric = normalize(b_metric)
+        
+            b_metric = interpolate(
+                    b_metric[:, 0],
+                    all_params['feature_type'],
+                    frame_cnt,
+                    all_params['base_sample_rate'] * all_params['sample_rate'],
+                    all_params['base_snippet_size'],
+                    detect_params['interpolate_type']
+                )
+            b_metric = np.expand_dims(b_metric, axis=1)
+            branch_scores_dict[branch_num] = b_metric
+
+    if metric is not None:
+        frame_cnt = metric.shape[0]
+    else: #Action instances (global_score) < threshold .1 
+        metric = np.zeros((frame_cnt, 1))
+        for b in range(branch_scores.shape[0]):
+            branch_scores_dict[b] = np.zeros((frame_cnt, 1))
+
+    return metric, frame_cnt, branch_scores_dict, out_detections
 
