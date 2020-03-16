@@ -745,7 +745,7 @@ def metric_scores(pth, **all_params):
     duration = frame_cnt/fps
     ######################## Get Average score for all branches ########################
     for class_id in range(all_params['action_class_num']):
-        if global_score[class_id] <= 0.1:
+        if global_score[class_id] <= detect_params['global_score_thrh']:
             continue
         metric = softmax(avg_score, dim=1)[:, class_id:class_id + 1]
         metric = normalize(metric)
@@ -804,7 +804,7 @@ def metric_scores(pth, **all_params):
     
     for branch_num in range(branch_scores.shape[0]):
         for class_id in range(all_params['action_class_num']):
-            if global_score[class_id] <= 0.1:
+            if global_score[class_id] <= detect_params['global_score_thrh']:
                 continue
             
             b_metric = softmax(branch_scores[branch_num, 0], dim=1)[:, class_id:class_id + 1]
