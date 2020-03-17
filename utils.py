@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+import random
 from PIL import Image
 from scipy.io import loadmat
 from collections import defaultdict
@@ -17,7 +18,8 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from scipy.signal import medfilt
 
-#import pdb
+
+import pdb
 
 ################ Config ##########################
 
@@ -312,13 +314,18 @@ def __load_background(
     bg_mask_files = os.listdir(bg_mask_dir)
     bg_mask_files.sort()
 
+    # Select only normal files
+    normal_files = [i for i in bg_mask_files if i.startswith('Normal')]
+    # Random sample (rate in terms of %) of normal files as hard negative
+    norm_sample_rate = .5
+    random_sampled_norm = random.sample(normal_files, int(len(normal_files) * norm_sample_rate))
+    # Select only abnormal files
+    abnormal_files = [i for i in bg_mask_files if not i.startswith('Normal')]
+    bg_mask_files = abnormal_files + random_sampled_norm
+    
     for bg_mask_file in bg_mask_files:
-      
-        video_name = bg_mask_file[:-4]
-        #TODO: Run 2nd variation experiment
-        if video_name.startswith('Normal'):
-            continue
 
+        video_name = bg_mask_file[:-4]
 
         new_key = video_name + '_bg'
 
@@ -703,7 +710,6 @@ def softmax(x, dim):
     x = F.softmax(torch.from_numpy(x), dim=dim)
     return x.numpy()
 
-import pdb
 
 def metric_scores(pth, **all_params):
     '''
