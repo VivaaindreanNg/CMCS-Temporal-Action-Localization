@@ -26,14 +26,18 @@ Static clip masks are used for hard negative mining.
 If you want to generate the masks by yourself, please refer to `tools/get_static_clips.py`.
 
 
-```python get_static_clips.py --in_dir {} --out_dir {} --percentile_thrh {}```
+```
+python get_static_clips.py --in_dir {} --out_dir {} --percentile_thrh {}
+```
 
 ### Data preparation for Training & Testing
 
 Run the `tools/train_test_split.py` to segregate extracted features into val(training subdirectories) & test(testing subdirectories), similar as the one configured in `configs/ucf_crime-I3D.json`. 
 
 
-```python train_test_split.py --feature_pth {} --dest_pth {} --sample_mode {}```
+```
+python train_test_split.py --feature_pth {} --dest_pth {} --sample_mode {}
+```
 
 ## Run (All train, test and evaluation were done with pytorch==1.2.0)
 
