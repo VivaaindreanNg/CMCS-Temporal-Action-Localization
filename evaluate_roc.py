@@ -174,8 +174,9 @@ if __name__ == '__main__':
         plt.title("Comparison of AUC score (modalities)")
         plt.grid(True)
         plt.legend(loc="lower right")
-    auc_plot_pth = args.save_auc + 'auc.png'
-    plt.savefig(auc_plot_pth)
+    #auc_plot_pth = args.save_auc + 'auc.png'
+    #plt.savefig(auc_plot_pth)
+    plt.show()
     
 
 
