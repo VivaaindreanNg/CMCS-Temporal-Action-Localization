@@ -3,7 +3,8 @@ import pandas as pd
 import pdb
 import os
 import argparse
-
+from matplotlib import pyplot as plt
+from scipy.io import loadmat, savemat
 from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
 from utils import metric_scores
@@ -45,11 +46,22 @@ if __name__ == '__main__':
         help='Path to config files'
     )
 
-    parser.add_argument('--test-subset-name', type=str)
+    parser.add_argument(
+        '--test-subset-name', type=str
+    )
+
+    parser.add_argument(
+        '--save_auc', type=str,
+        help='Path to store AUC (.mat files) for each modality including graph'
+    )
     args = parser.parse_args()
 
     print(args.config_file)
     print(args.test_subset_name)
+    print(args.save_auc)
+
+    if not os.path.exists(args.save_auc):
+        os.makedirs(args.save_auc)
 
     all_params = load_config_file(args.config_file)
     locals().update(all_params)
@@ -85,6 +97,7 @@ if __name__ == '__main__':
                 #### Obtain predicted (average of all branches) scores ####
 
                 All_det, All_GT = [], []
+                auc_dict = {}
 
                 for vid in list_video_names:
                     scores, frame_cnt, _, _ = metric_scores(
@@ -126,6 +139,44 @@ if __name__ == '__main__':
                     modality,
                     auc
                 ))
+
+                # Save info for plotting AUC graph
+                fpr, tpr, _ = roc_curve(All_GT, All_det)
+                
+                auc_dict['modality'] = modality
+                auc_dict['X'] = np.reshape(fpr, (fpr.size, 1))
+                auc_dict['Y'] = np.reshape(tpr, (tpr.size, 1))
+                auc_dict['AUC'] = auc
+                savemat(
+                    file_name=args.save_auc + '{}.mat'.format(modality), 
+                    mdict=auc_dict)
+
+
+    # Plot AUC graph
+    auc_plot_pth = args.save_auc + 'auc.png'
+    color_list = ['blue', 'cyan', 'pink', 'green']
+    auc_category = [i[:-4] for i in os.listdir(args.save_auc)]
+
+    for i in range(len(auc_category)):
+        path_each_auc = os.path.join(args.save_auc, auc_category[i]+'.mat')
+        get_auc = loadmat(path_each_auc)
+
+        x_axis = get_auc['X']
+        y_axis = get_auc['Y']
+        auc = np.reshape(get_auc['AUC'], -1)
+        auc *= 100
+        auc = "%.2f" % auc
+        plt.plot(x_axis, y_axis, color=color_list[i], 
+             label='{} ({})'.format(auc_category[i], auc))
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.title("Comparison of AUC score (modalities)")
+        plt.grid(True)
+        plt.legend(loc="lower right")
+    plt.savefig(auc_plot_pth)
+    
+
+
     
     
 
