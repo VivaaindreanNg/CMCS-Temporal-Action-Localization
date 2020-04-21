@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd 
 import pdb
 import os
+import shutil
 import argparse
 from matplotlib import pyplot as plt
 from scipy.io import loadmat, savemat
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--save_auc', type=str,
+        '--save-auc', type=str,
         help='Path to store AUC (.mat files) for each modality including graph'
     )
     args = parser.parse_args()
@@ -60,8 +61,9 @@ if __name__ == '__main__':
     print(args.test_subset_name)
     print(args.save_auc)
 
-    if not os.path.exists(args.save_auc):
-        os.makedirs(args.save_auc)
+    if os.path.exists(args.save_auc):
+        shutil.rmtree(args.save_auc)
+    os.makedirs(args.save_auc)
 
     all_params = load_config_file(args.config_file)
     locals().update(all_params)
@@ -153,12 +155,11 @@ if __name__ == '__main__':
 
 
     # Plot AUC graph
-    auc_plot_pth = args.save_auc + 'auc.png'
     color_list = ['blue', 'cyan', 'pink', 'green']
-    auc_category = [i[:-4] for i in os.listdir(args.save_auc)]
+    auc_category = os.listdir(args.save_auc)
 
     for i in range(len(auc_category)):
-        path_each_auc = os.path.join(args.save_auc, auc_category[i]+'.mat')
+        path_each_auc = os.path.join(args.save_auc, auc_category[i])
         get_auc = loadmat(path_each_auc)
 
         x_axis = get_auc['X']
@@ -167,12 +168,13 @@ if __name__ == '__main__':
         auc *= 100
         auc = "%.2f" % auc
         plt.plot(x_axis, y_axis, color=color_list[i], 
-             label='{} ({})'.format(auc_category[i], auc))
+             label='{} ({})'.format(auc_category[i][:-4], auc))
         plt.xlabel("False Positive Rate")
         plt.ylabel("True Positive Rate")
         plt.title("Comparison of AUC score (modalities)")
         plt.grid(True)
         plt.legend(loc="lower right")
+    auc_plot_pth = args.save_auc + 'auc.png'
     plt.savefig(auc_plot_pth)
     
 
