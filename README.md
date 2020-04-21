@@ -53,7 +53,7 @@ python test.py --config-file {} --test-subset-name {}
 
 3. Compute area under ROC (at frame-level) using the saved CAS:
 ```
-python evaluate_roc.py --config-file {} --test-subset-name {} --save_auc {}
+python evaluate_roc.py --config-file {} --test-subset-name {} --save-auc {}
 ```
 
 4. Output localized actions & calculate mAP:
