@@ -43,7 +43,7 @@ python train_test_split.py --feature_pth {} --dest_pth {} --sample_mode {}
 
 1. Train models with weak supervision via torch-nightly==1.2.0 (Skip this if you use our trained model):
 ```
-python train.py --config-file {} --train-subset-name val --test-subset-name test --test-log
+python train.py --config-file {} --train-subset-name {} --test-subset-name {} --test-log
 ```
 
 2. Test and save the class activation sequences (CAS):
@@ -53,7 +53,7 @@ python test.py --config-file {} --test-subset-name {}
 
 3. Compute area under ROC (at frame-level) using the saved CAS:
 ```
-python evaluate_roc.py --config-file {} --test-subset-name {}
+python evaluate_roc.py --config-file {} --test-subset-name {} --save_auc {}
 ```
 
 4. Output localized actions & calculate mAP:
